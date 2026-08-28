@@ -20,8 +20,7 @@ I recently built and deployed an end-to-end **Customer Churn Risk & Retention Mo
 
 🛠️ **Tech Stack**: Python (Pandas, Scikit-Learn, Imbalanced-Learn, XGBoost, SHAP), Tableau XML, SQL, Git.
 
-📂 **Full Code & Architecture**: Check out the complete repository, deployment guide, and documentation on GitHub!
-
-🔗 **GitHub Repo**: https://github.com/yourusername/customer-churn-retention
+🌐 **Live Streamlit App**: https://yashn035-churn-analysis.streamlit.app
+🔗 **GitHub Repo**: https://github.com/yashn035/ChurnAnalysis
 
 #MachineLearning #DataScience #Python #Tableau #CustomerAnalytics #ChurnPrediction #CustomerSuccess #BusinessIntelligence #Analytics #AI
