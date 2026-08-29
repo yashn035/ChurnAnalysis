@@ -10,6 +10,7 @@ import time
 import tracemalloc
 import warnings
 from datetime import datetime
+from typing import Any, Callable, Dict, List, Tuple
 
 import joblib
 import numpy as np
@@ -34,18 +35,40 @@ from json_logger import get_json_logger, log_pipeline_step
 
 warnings.filterwarnings("ignore")
 
-RANDOM_STATE = 42
+# -----------------------------------------------------------------------------
+# CONSTANTS & ENVIRONMENT CONFIGURATION
+# -----------------------------------------------------------------------------
+RANDOM_STATE: int = 42
+TEST_SIZE: float = 0.20
+K_BEST_FEATURES: int = 15
+CV_FOLDS: int = 5
+DEFAULT_NUM_SAMPLES: int = 1000
+IQR_MULTIPLIER: float = 1.5
+
+MODEL_PATH: str = os.getenv("MODEL_PATH", "models/model.pkl")
+SCALER_PATH: str = os.getenv("SCALER_PATH", "models/scaler.pkl")
+SELECTOR_PATH: str = os.getenv("SELECTOR_PATH", "models/selector.pkl")
+DATA_PATH: str = os.getenv("DATA_PATH", "data/customer_data.csv")
+LOG_PATH: str = os.getenv("LOG_PATH", "logs/pipeline.jsonl")
+
 np.random.seed(RANDOM_STATE)
 
 # Global list storing benchmark metric dictionaries
-BENCHMARK_RESULTS = []
+BENCHMARK_RESULTS: List[Dict[str, Any]] = []
 
 
-def benchmark(func):
-    """Decorator measuring execution time (seconds) and peak memory usage (MB)."""
+def benchmark(func: Callable) -> Callable:
+    """Decorator measuring execution time (seconds) and peak memory usage (MB).
+
+    Args:
+        func (Callable): Target function to measure.
+
+    Returns:
+        Callable: Wrapped benchmarked function.
+    """
 
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         tracemalloc.start()
         start_time = time.perf_counter()
 
@@ -70,8 +93,18 @@ def benchmark(func):
     return wrapper
 
 
-def generate_synthetic_data(filepath="data/customer_data.csv", num_samples=1000):
-    """Generate synthetic Telco Customer Churn dataset matching Kaggle benchmark."""
+def generate_synthetic_data(
+    filepath: str = DATA_PATH, num_samples: int = DEFAULT_NUM_SAMPLES
+) -> pd.DataFrame:
+    """Generate synthetic Telco Customer Churn dataset matching Kaggle benchmark.
+
+    Args:
+        filepath (str): Destination CSV filepath for synthetic data.
+        num_samples (int): Total number of subscriber rows to generate.
+
+    Returns:
+        pd.DataFrame: Generated synthetic customer churn DataFrame.
+    """
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     if os.path.exists(filepath):
         print(
@@ -225,8 +258,18 @@ def generate_synthetic_data(filepath="data/customer_data.csv", num_samples=1000)
 
 
 @benchmark
-def load_data(data_path):
-    """Load dataset and extract customer IDs."""
+def load_data(data_path: str) -> Tuple[pd.DataFrame, pd.Series]:
+    """Load dataset CSV file and extract customer ID Series.
+
+    Args:
+        data_path (str): Input CSV data filepath.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.Series]: Clean DataFrame without customerID and customerID Series.
+
+    Raises:
+        ValueError: If input dataset is empty.
+    """
     print("\n--- STEP 1: Loading Dataset ---")
     generate_synthetic_data(data_path)
     df = pd.read_csv(data_path)
@@ -240,9 +283,25 @@ def load_data(data_path):
 
 
 @benchmark
-def preprocess_data(df, customer_ids):
-    """Perform data cleaning, imputations, feature engineering, and outlier capping."""
+def preprocess_data(
+    df: pd.DataFrame, customer_ids: pd.Series
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Perform data cleaning, median/mode imputations, feature engineering, and IQR outlier capping.
+
+    Args:
+        df (pd.DataFrame): Raw input subscriber DataFrame.
+        customer_ids (pd.Series): Customer identifier Series.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: Preprocessed encoded DataFrame and human-readable DataFrame.
+
+    Raises:
+        ValueError: If DataFrame is empty.
+    """
     print("\n--- STEP 2 & 3: Data Cleaning & Feature Engineering ---")
+    if df.empty:
+        raise ValueError("Input dataset is empty.")
+
     if df["TotalCharges"].dtype == "object":
         df["TotalCharges"] = pd.to_numeric(
             df["TotalCharges"].astype(str).str.strip(), errors="coerce"
@@ -308,22 +367,38 @@ def preprocess_data(df, customer_ids):
         Q1 = df[col].quantile(0.25)
         Q3 = df[col].quantile(0.75)
         IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
+        lower_bound = Q1 - IQR_MULTIPLIER * IQR
+        upper_bound = Q3 + IQR_MULTIPLIER * IQR
         df[col] = df[col].clip(lower=lower_bound, upper=upper_bound)
 
     return df, readable_df
 
 
 @benchmark
-def prepare_features_and_split(df, customer_ids):
-    """Perform train/test split, feature scaling, SelectKBest, and SMOTE resampling."""
+def prepare_features_and_split(df: pd.DataFrame, customer_ids: pd.Series) -> Tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    pd.Series,
+    StandardScaler,
+    SelectKBest,
+    List[str],
+]:
+    """Perform train/test split, feature scaling, SelectKBest selection, and SMOTE resampling.
+
+    Args:
+        df (pd.DataFrame): Processed feature matrix DataFrame.
+        customer_ids (pd.Series): Customer identifier Series.
+
+    Returns:
+        Tuple: Resampled X_train, y_train, scaled X_test, y_test, fitted scaler, selector, and selected feature names.
+    """
     print("\n--- STEP 5 & 6: Train-Test Split, Scaling & SMOTE ---")
     X = df.drop(columns=["Churn"])
     y = df["Churn"]
 
     X_train, X_test, y_train, y_test, ids_train, ids_test = train_test_split(
-        X, y, customer_ids, test_size=0.20, stratify=y, random_state=RANDOM_STATE
+        X, y, customer_ids, test_size=TEST_SIZE, stratify=y, random_state=RANDOM_STATE
     )
 
     scaler = StandardScaler()
@@ -331,7 +406,7 @@ def prepare_features_and_split(df, customer_ids):
     X_test_scaled = scaler.transform(X_test)
     raw_feature_names = X.columns.tolist()
 
-    selector = SelectKBest(score_func=f_classif, k=15)
+    selector = SelectKBest(score_func=f_classif, k=K_BEST_FEATURES)
     X_train_sel = selector.fit_transform(X_train_scaled, y_train)
     X_test_sel = selector.transform(X_test_scaled)
 
@@ -353,15 +428,23 @@ def prepare_features_and_split(df, customer_ids):
 
 
 @benchmark
-def train_model(X_train_res, y_train_res):
-    """Tune Logistic Regression, Random Forest, and XGBoost via GridSearchCV."""
+def train_model(X_train_res: np.ndarray, y_train_res: np.ndarray) -> Dict[str, Any]:
+    """Tune Logistic Regression, Random Forest, and XGBoost via GridSearchCV.
+
+    Args:
+        X_train_res (np.ndarray): SMOTE-resampled feature matrix.
+        y_train_res (np.ndarray): SMOTE-resampled target vector.
+
+    Returns:
+        Dict[str, Any]: Dictionary mapping model names to best fitted estimators.
+    """
     print("\n--- STEP 7: Model Training & Grid Search CV ---")
     print("Tuning Logistic Regression...")
     param_grid_lr = {"C": [0.01, 0.1, 1, 10]}
     grid_lr = GridSearchCV(
         LogisticRegression(random_state=RANDOM_STATE, max_iter=1000),
         param_grid_lr,
-        cv=5,
+        cv=CV_FOLDS,
         scoring="roc_auc",
         n_jobs=-1,
     )
@@ -373,7 +456,7 @@ def train_model(X_train_res, y_train_res):
     grid_rf = GridSearchCV(
         RandomForestClassifier(random_state=RANDOM_STATE),
         param_grid_rf,
-        cv=5,
+        cv=CV_FOLDS,
         scoring="roc_auc",
         n_jobs=-1,
     )
@@ -389,7 +472,7 @@ def train_model(X_train_res, y_train_res):
     grid_xgb = GridSearchCV(
         XGBClassifier(random_state=RANDOM_STATE, eval_metric="logloss"),
         param_grid_xgb,
-        cv=5,
+        cv=CV_FOLDS,
         scoring="roc_auc",
         n_jobs=-1,
     )
@@ -406,16 +489,30 @@ def train_model(X_train_res, y_train_res):
 
 @benchmark
 def evaluate_and_export(
-    models,
-    X_test_sel,
-    y_test,
-    readable_df,
-    selected_feature_names,
-    X_train_res,
-    scaler,
-    selector,
-):
-    """Evaluate models, compute SHAP, export CSV predictions, metrics history, and pkl files."""
+    models: Dict[str, Any],
+    X_test_sel: np.ndarray,
+    y_test: pd.Series,
+    readable_df: pd.DataFrame,
+    selected_feature_names: List[str],
+    X_train_res: np.ndarray,
+    scaler: StandardScaler,
+    selector: SelectKBest,
+) -> Tuple[Any, float, pd.DataFrame]:
+    """Evaluate models, compute SHAP explainability, export CSV predictions, metrics history, and pkl files.
+
+    Args:
+        models (Dict[str, Any]): Dictionary of trained models.
+        X_test_sel (np.ndarray): Selected test feature matrix.
+        y_test (pd.Series): True test set labels.
+        readable_df (pd.DataFrame): Human-readable subscriber DataFrame.
+        selected_feature_names (List[str]): Names of 15 selected features.
+        X_train_res (np.ndarray): SMOTE-resampled training matrix for SHAP.
+        scaler (StandardScaler): Fitted StandardScaler artifact.
+        selector (SelectKBest): Fitted SelectKBest feature selector artifact.
+
+    Returns:
+        Tuple[Any, float, pd.DataFrame]: Winning model estimator, best AUC score, and feature importances DataFrame.
+    """
     print("\n--- STEP 8-10: Test Set Evaluation & Export ---")
     best_auc = -1.0
     best_model_name = None
@@ -477,7 +574,7 @@ def evaluate_and_export(
     )
 
     os.makedirs("data/processed", exist_ok=True)
-    os.makedirs("models", exist_ok=True)
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
 
     output_df.to_csv("data/processed/churn_predictions_v2.csv", index=False)
     output_df.to_csv("data/processed/churn_predictions.csv", index=False)
@@ -512,18 +609,20 @@ def evaluate_and_export(
         metrics_df.to_csv(metrics_file, mode="a", header=False, index=False)
     print(f"Appended current model metrics to '{metrics_file}'.")
 
-    joblib.dump(best_model, "models/model.pkl")
-    joblib.dump(scaler, "models/scaler.pkl")
-    joblib.dump(selector, "models/selector.pkl")
-    print(
-        "Successfully saved 'models/model.pkl', 'models/scaler.pkl', and 'models/selector.pkl'."
-    )
+    joblib.dump(best_model, MODEL_PATH)
+    joblib.dump(scaler, SCALER_PATH)
+    joblib.dump(selector, SELECTOR_PATH)
+    print(f"Successfully saved '{MODEL_PATH}', '{SCALER_PATH}', and '{SELECTOR_PATH}'.")
 
     return best_model, best_auc, feature_imp_df
 
 
-def print_and_save_benchmarks(file_path="benchmarks.json"):
-    """Print ASCII benchmark summary table to stdout and save to JSON."""
+def print_and_save_benchmarks(file_path: str = "benchmarks.json") -> None:
+    """Print ASCII benchmark summary table to stdout and save to JSON.
+
+    Args:
+        file_path (str): Destination JSON filepath for benchmark metrics.
+    """
     print("\n" + "=" * 80)
     print("                 BENCHMARK PERFORMANCE SUMMARY TABLE")
     print("=" * 80)
@@ -542,17 +641,14 @@ def print_and_save_benchmarks(file_path="benchmarks.json"):
     print(f"[INFO] Saved benchmark metrics to '{file_path}'.\n")
 
 
-def main():
-    logger = get_json_logger("churn_analysis", "logs/pipeline.jsonl")
+def main() -> None:
+    """Execute end-to-end Machine Learning pipeline and benchmarking runner."""
+    logger = get_json_logger("churn_analysis", LOG_PATH)
     print("=" * 80)
     print("      CUSTOMER CHURN ANALYSIS & RETENTION MODELING PIPELINE (V2 - HIGH AUC)")
     print("=" * 80)
 
-    data_path = (
-        "data/customer_data.csv"
-        if os.path.exists("data/customer_data.csv")
-        else "customer_data.csv"
-    )
+    data_path = DATA_PATH if os.path.exists(DATA_PATH) else "customer_data.csv"
 
     # Step 1: Load Data
     t0 = time.time()
