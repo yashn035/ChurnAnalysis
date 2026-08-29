@@ -9,19 +9,75 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 
-# Page configuration
+# 1. Page Configuration
 st.set_page_config(
-    page_title="Customer Churn Risk & Retention System",
+    page_title="Churn Predictor",
     page_icon="📊",
     layout="wide"
 )
 
-# Title & Subtitle Banner
-st.title("📊 Customer Churn Risk & Retention System")
-st.markdown("**AI-Driven Churn Prediction, Risk Segmentation, and Retention Strategy**")
-st.markdown("---")
+# 2. Custom CSS Style Block for Pop-Out KPI Cards & Aesthetics
+st.markdown("""
+<style>
+    /* Custom CSS for vibrant, pop-out KPI Metric Cards */
+    [data-testid="stMetric"] {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 12px;
+        padding: 18px 22px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-2px);
+        border-color: rgba(99, 102, 241, 0.6);
+    }
+    [data-testid="stMetricLabel"] {
+        color: #94a3b8 !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    [data-testid="stMetricValue"] {
+        color: #38bdf8 !important;
+        font-size: 1.8rem !important;
+        font-weight: 800 !important;
+    }
+    .stAppViewContainer {
+        background-color: #0b0f19;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Data Loader
+# 3. Sidebar Configuration with Title, Description, Data Tag & Radio Selector
+st.sidebar.title("📊 Churn Predictor")
+st.sidebar.markdown(
+    "AI-driven subscriber churn prediction, risk segmentation, SHAP explainability, and targeted retention strategy."
+)
+
+st.sidebar.markdown(
+    """
+    <div style="background-color: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; color: #a5b4fc; margin-bottom: 15px;">
+        🏷️ <b>Data Source</b>: Telco Customer Churn
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.sidebar.header("🕹️ Navigation")
+app_mode = st.sidebar.radio(
+    "Select View Mode",
+    [
+        "Executive Summary KPIs",
+        "Interactive Individual Risk Calculator",
+        "Top 20 High-Risk Target List",
+        "A/B Retention Trial Cohorts",
+        "📈 Model Performance History"
+    ]
+)
+
+# 4. Data Loader
 @st.cache_data
 def load_data():
     if os.path.exists('data/processed/churn_predictions_v2.csv'):
@@ -46,13 +102,6 @@ def load_data():
 
 df = load_data()
 
-# Sidebar Navigation
-st.sidebar.header("🕹️ Dashboard Navigation")
-app_mode = st.sidebar.radio(
-    "Select View Mode",
-    ["Executive Summary KPIs", "Interactive Individual Risk Calculator", "Top 20 High-Risk Target List", "A/B Retention Trial Cohorts", "📈 Model Performance History"]
-)
-
 # -----------------------------------------------------------------------------
 # MODE 1: EXECUTIVE SUMMARY KPIS
 # -----------------------------------------------------------------------------
@@ -67,7 +116,7 @@ if app_mode == "Executive Summary KPIs":
     arr_protected = "$1.2M+"
 
     col1.metric("Overall Churn Rate", f"{overall_churn:.1%}")
-    col2.metric("High-Risk Customers (P > 0.50)", f"{high_risk_count} Accounts")
+    col2.metric("High-Risk Accounts (P > 0.50)", f"{high_risk_count} Accounts")
     col3.metric("At-Risk Avg Monthly Charge", f"${avg_monthly:.2f}")
     col4.metric("Protected Revenue Goal", arr_protected)
 
@@ -219,7 +268,13 @@ elif app_mode == "📈 Model Performance History":
         else:
             st.warning("Metrics history file is empty or corrupted.")
     else:
-        st.info("No historical metric data found yet. Run `python churn_analysis.py` or `make pipeline` to record initial performance history.")
+        st.info("No historical metric data found yet. Run `python src/churn_analysis.py` or `make pipeline` to record initial performance history.")
 
+# 5. Footer
 st.markdown("---")
-st.markdown("© 2026 Customer Churn Analysis & Retention System | Senior Lead Data Scientist")
+st.markdown(
+    "<p style='text-align: center; color: #64748b; font-size: 0.85rem; padding-top: 1rem;'>"
+    "Built with ❤️ using Streamlit, Scikit-learn, and SHAP."
+    "</p>",
+    unsafe_allow_html=True
+)
