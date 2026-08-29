@@ -1,6 +1,29 @@
 # Customer Churn Analysis & Retention Modeling System 📊
 
-> **An end-to-end Machine Learning pipeline, SHAP explainability model, Tableau executive dashboard, and targeted retention strategy to reduce telecom customer churn by 16.5% and protect $1.2M+ ARR.**
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://yashn035-churn-analysis.streamlit.app)
+[![CI Pipeline](https://github.com/yashn035/ChurnAnalysis/actions/workflows/ci.yml/badge.svg)](https://github.com/yashn035/ChurnAnalysis/actions)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> **An end-to-end Machine Learning pipeline, SHAP explainability model, Tableau executive dashboard, Streamlit web application, and targeted retention strategy to reduce telecom customer churn by 16.5% and protect $1.2M+ ARR.**
+
+---
+
+## 🖼️ Dashboard Preview
+
+![Streamlit Dashboard](dashboard.png)
+
+---
+
+## ⚡ Quick Start (Docker One-Liner)
+
+Launch the complete containerized Streamlit dashboard with a single command:
+
+```bash
+docker build -t churn-app . && docker run -p 8501:8501 churn-app
+```
+
+Once running, access the interactive dashboard at **`http://localhost:8501`**.
 
 ---
 
@@ -8,9 +31,9 @@
 
 Customer acquisition in the telecommunications industry costs **5 to 7 times more** than customer retention. High monthly subscriber defection directly erodes recurring revenue and customer lifetime value.
 
-- **Revenue at Risk**: **$1.2M Annual Recurring Revenue (ARR)** currently vulnerable due to churn.
-- **Critical Lifecycle Phase**: Over **65% of customer defection** occurs within the first 12 months (`0–1 year` tenure group).
-- **Core Objective**: Replace reactive support with a **predictive retention engine** ($P_{\text{churn}} > 0.50$) that identifies churn drivers and targets interventions, projecting a **16.5% net reduction in churn** (saving **$1.2M+ ARR**).
+* **Revenue at Risk**: **$1.2M Annual Recurring Revenue (ARR)** currently vulnerable due to churn.
+* **Critical Lifecycle Phase**: Over **65% of customer defection** occurs within the first 12 months (`0–1 year` tenure group).
+* **Core Objective**: Replace reactive support with a **predictive retention engine** ($P_{\text{churn}} > 0.50$) that identifies churn drivers and targets interventions, projecting a **16.5% net reduction in churn** (saving **$1.2M+ ARR**).
 
 ---
 
@@ -51,75 +74,82 @@ The automated machine learning pipeline [`churn_analysis.py`](file:///c:/Users/y
 
 ---
 
+## 🧪 Unit Testing & CI/CD Pipeline
+
+The project includes an automated unit test suite executed via `pytest` and integrated into GitHub Actions CI:
+
+* **Unit Test File**: [`tests/test_preprocessing.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/tests/test_preprocessing.py) (tests median imputation, ordinal mappings, 1.5× IQR capping, and `SelectKBest` feature output count).
+* **Pytest Config**: [`pytest.ini`](file:///c:/Users/yashn/CustomerChurnAnalysis/pytest.ini)
+* **Run Tests Locally**:
+  ```bash
+  pytest
+  ```
+
+---
+
 ## 📁 File Structure
 
 ```text
 CustomerChurnAnalysis/
+├── .github/workflows/ci.yml        # GitHub Actions CI workflow (pytest + pipeline checks)
+├── tests/
+│   └── test_preprocessing.py       # Pytest unit tests for preprocessing & feature selection
+├── .dockerignore                   # Docker build ignore rules
+├── Dockerfile                      # Production Docker container image definition
+├── pytest.ini                      # Pytest test runner configuration
 ├── customer_data.csv               # Raw Telco subscriber dataset (1,000 rows, 21 columns)
 ├── churn_analysis.py               # Main Python ML pipeline (cleaning, SMOTE, tuning, SHAP, evaluation)
-├── churn_predictions.csv           # Model export containing features, actual_churn, predicted_churn & probability
+├── run_churn_pipeline.py           # Command-line production pipeline runner script
+├── app.py                          # Streamlit Web Application (4 interactive view modes)
+├── ab_test_cohort.py               # A/B Retention Trial Cohort Generator script
+├── churn_predictions.csv           # Model export containing features & predicted churn probabilities
 ├── churn_predictions_v2.csv        # Version 2 predictions export file
-├── generate_tableau_workbook.py    # Python script that programmatically generates Tableau XML
-├── Customer_Churn_Dashboard.twb    # Programmatically created Tableau Workbook file
+├── generate_tableau_workbook.py    # Script that programmatically generates Tableau XML
+├── Customer_Churn_Dashboard.twb    # Programmatically created Tableau Packaged Workbook
 ├── requirements.txt                # Exact Python package dependencies
-└── README.md                       # Project documentation (this file)
+└── README.md                       # Project documentation
 ```
 
 ---
 
-## 💻 Setup & Installation Instructions
+## 💻 Setup & Local Installation
 
-### Prerequisites
-- **Python**: Version 3.12.x (or 3.10+)
-- **Environment**: Virtual environment recommended (`venv` or `conda`)
+### Local Setup (Python Environment)
 
-### Installation Steps
-
-1. Clone or navigate to the project directory:
+1. Navigate to the project directory:
    ```bash
    cd c:\Users\yashn\CustomerChurnAnalysis
    ```
 
-2. Install exact Python package dependencies:
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
----
+3. Run the ML pipeline:
+   ```bash
+   python churn_analysis.py
+   ```
 
-## 🏃 How to Run the Pipeline
-
-Execute the main Python script end-to-end:
-
-```bash
-python churn_analysis.py
-```
-
-**Outputs generated upon completion**:
-- Evaluation metrics printed to console (Confusion Matrix, Classification Report, AUC-ROC).
-- SHAP feature importance driver summary.
-- Exported predictions saved to [`churn_predictions_v2.csv`](file:///c:/Users/yashn/CustomerChurnAnalysis/churn_predictions_v2.csv) and [`churn_predictions.csv`](file:///c:/Users/yashn/CustomerChurnAnalysis/churn_predictions.csv).
+4. Launch the local Streamlit application:
+   ```bash
+   streamlit run app.py
+   ```
 
 ---
 
-## 📊 How to Open & View the Tableau Dashboard
+## 📊 Tableau & Streamlit Visualizations
 
-You can visualize test predictions using either method:
+### 🌐 Streamlit Live Web App
+* **Live Deployment**: [https://yashn035-churn-analysis.streamlit.app](https://yashn035-churn-analysis.streamlit.app)
+* Features 4 view modes: Executive KPI summary, real-time subscriber risk calculator, Top 20 target list, and A/B retention trial cohort viewer.
 
-### Option 1: Double-Click Programmatic Tableau Workbook (`.twb`)
-Simply open [`Customer_Churn_Dashboard.twb`](file:///c:/Users/yashn/CustomerChurnAnalysis/Customer_Churn_Dashboard.twb) in Tableau Desktop or Tableau Public.
-
-### Option 2: Regenerate Tableau XML Programmatically
-```bash
-python generate_tableau_workbook.py
-```
-
-### Dashboard Layout Overview
-- **Top KPI Scorecard Banner**: Overall Churn Rate (38.7%), Count of High-Risk Accounts ($P>0.50$), Avg Monthly Charge ($77.54).
-- **View 1 – Bar Chart**: Average `churn_probability` by `Contract` and `tenure_group`.
-- **View 2 – Risk Scatter Plot**: `MonthlyCharges` vs. `Tenure` with Green-to-Red continuous risk gradient.
-- **View 3 – Top 20 Table**: Operational list of highest-risk customers ($P_{\text{churn}}>0.70$) for immediate outreach.
-- **Global Filters**: `Contract`, `PaymentMethod`, `InternetService`.
+### 🎨 Programmatic Tableau Dashboard
+* Open [`Customer_Churn_Dashboard.twb`](file:///c:/Users/yashn/CustomerChurnAnalysis/Customer_Churn_Dashboard.twb) in Tableau Desktop / Tableau Public.
+* Regenerate workbook programmatically:
+  ```bash
+  python generate_tableau_workbook.py
+  ```
 
 ---
 
@@ -144,9 +174,9 @@ python generate_tableau_workbook.py
 
 ---
 
-## 📄 License & Contact Information
+## 📄 License & Contact
 
-- **License**: MIT License
-- **Author**: Senior Lead Data Scientist & Retention Strategy Team
-- **Contact**: `yashn@customerchurnanalytics.com`
-- **Repository**: Customer Churn Analysis & Retention Modeling System
+* **License**: MIT License
+* **Author**: Senior Lead Data Scientist & Retention Strategy Team
+* **GitHub Repository**: [https://github.com/yashn035/ChurnAnalysis](https://github.com/yashn035/ChurnAnalysis)
+* **Live App**: [https://yashn035-churn-analysis.streamlit.app](https://yashn035-churn-analysis.streamlit.app)
