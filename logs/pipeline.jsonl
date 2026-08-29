@@ -20,3 +20,8 @@
 {"timestamp": "2026-08-29T13:54:25", "level": "INFO", "step": "smote", "execution_time_seconds": 0.0092, "n_samples": 950}
 {"timestamp": "2026-08-29T13:54:33", "level": "INFO", "step": "model_training", "execution_time_seconds": 7.6508, "n_samples": 950}
 {"timestamp": "2026-08-29T13:54:33", "level": "INFO", "step": "prediction_export", "execution_time_seconds": 0.0071, "n_samples": 200}
+{"timestamp": "2026-08-29T14:11:08", "level": "INFO", "step": "data_load", "execution_time_seconds": 0.0273, "n_samples": 1000}
+{"timestamp": "2026-08-29T14:11:08", "level": "INFO", "step": "feature_engineering", "execution_time_seconds": 0.0858, "n_samples": 1000}
+{"timestamp": "2026-08-29T14:11:08", "level": "INFO", "step": "smote", "execution_time_seconds": 0.064, "n_samples": 950}
+{"timestamp": "2026-08-29T14:11:17", "level": "INFO", "step": "model_training", "execution_time_seconds": 9.6058, "n_samples": 950}
+{"timestamp": "2026-08-29T14:11:18", "level": "INFO", "step": "prediction_export", "execution_time_seconds": 0.243, "n_samples": 200}
