@@ -11,15 +11,23 @@
 
 ---
 
-## ⚡ Quick Start (Docker One-Liner)
+## ⚡ Quick Start (Docker & Docker Compose)
 
-Launch the complete containerized Streamlit dashboard with a single command:
+### Run Entire Stack (Streamlit + FastAPI) via Docker Compose
+
+Launch both the **FastAPI prediction backend** (Port 8000) and the **Streamlit web dashboard** (Port 8501) with automated health checks using Docker Compose:
+
+```bash
+docker-compose up --build
+```
+
+> **Note**: After running the stack, open [http://localhost:8501](http://localhost:8501) to see the interactive Streamlit dashboard and [http://localhost:8000/docs](http://localhost:8000/docs) for the OpenAPI interactive documentation.
+
+### Run Single Streamlit Container
 
 ```bash
 docker build -t churn-app . && docker run -p 8501:8501 churn-app
 ```
-
-> **Note**: After running the app, open [http://localhost:8501](http://localhost:8501) to see the interactive dashboard.
 
 ---
 
