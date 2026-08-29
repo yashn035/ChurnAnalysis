@@ -20,7 +20,7 @@ st.markdown(
     /* Custom CSS for vibrant, pop-out KPI Metric Cards */
     [data-testid="stMetric"] {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-        border: 1px solid rgba(99, 102, 241, 0.3);
+        border: 1px solid rgba(226, 232, 240, 0.22);
         border-radius: 12px;
         padding: 18px 22px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
@@ -28,7 +28,7 @@ st.markdown(
     }
     [data-testid="stMetric"]:hover {
         transform: translateY(-2px);
-        border-color: rgba(99, 102, 241, 0.6);
+        border-color: rgba(226, 232, 240, 0.5);
     }
     [data-testid="stMetricLabel"] {
         color: #94a3b8 !important;
