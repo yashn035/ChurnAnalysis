@@ -13,37 +13,45 @@ import streamlit as st
 # 1. Page Configuration
 st.set_page_config(page_title="Churn Predictor", page_icon="📊", layout="wide")
 
-# 2. Custom CSS Style Block for Pop-Out KPI Cards & Aesthetics
+# 2. Custom CSS Style Block for Pop-Out KPI Cards & Modern Slate Theme
 st.markdown(
     """
 <style>
+    /* Lighter Modern Slate Background */
+    .stApp, .stAppViewContainer {
+        background-color: #0f172a !important;
+    }
+
+    /* High-contrast crisp typography for headers & text */
+    h1, h2, h3, h4, h5, h6, .stMarkdown p, span {
+        color: #f8fafc;
+    }
+
     /* Custom CSS for vibrant, pop-out KPI Metric Cards */
     [data-testid="stMetric"] {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-        border: 1px solid rgba(226, 232, 240, 0.22);
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(226, 232, 240, 0.35);
         border-radius: 12px;
         padding: 18px 22px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-        transition: transform 0.2s ease, border-color 0.2s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
     [data-testid="stMetric"]:hover {
         transform: translateY(-2px);
-        border-color: rgba(226, 232, 240, 0.5);
+        border-color: rgba(99, 102, 241, 0.7);
+        box-shadow: 0 6px 24px rgba(99, 102, 241, 0.25);
     }
     [data-testid="stMetricLabel"] {
-        color: #94a3b8 !important;
+        color: #cbd5e1 !important;
         font-size: 0.85rem !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
     [data-testid="stMetricValue"] {
         color: #38bdf8 !important;
-        font-size: 1.8rem !important;
+        font-size: 1.85rem !important;
         font-weight: 800 !important;
-    }
-    .stAppViewContainer {
-        background-color: #0b0f19;
     }
 </style>
 """,
