@@ -153,9 +153,13 @@ The repository includes a modern Next.js frontend in [`frontend/`](file:///c:/Us
 ### Step 1: Start FastAPI Backend Server
 ```bash
 make api
-# Or manually: uvicorn api:app --reload --port 8000
+# Or manually: uvicorn src.api:app --reload --port 8000
 ```
 *(Confirms model artifacts are loaded at `http://localhost:8000/health`)*
+
+> **🔒 Security & CORS Middleware**: The FastAPI backend restricts Cross-Origin Resource Sharing (CORS) strictly to authorized origins:
+> - `http://localhost:8501` & `http://localhost:3000` (Local Streamlit & Next.js development)
+> - `https://yashn035-churn-analysis.streamlit.app` & `https://your-app.streamlit.app` (Production Streamlit Cloud)
 
 ### Step 2: Start Next.js Frontend Application
 In a separate terminal window:

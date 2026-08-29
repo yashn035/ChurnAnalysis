@@ -19,12 +19,21 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Enable CORS Middleware for React & Web Frontends
+# Enable CORS Middleware restricted to authorized frontend origins
+allowed_origins = [
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://yashn035-churn-analysis.streamlit.app",
+    "https://your-app.streamlit.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -196,14 +205,50 @@ def preprocess_input(input_data: ChurnPredictionInput) -> pd.DataFrame:
 
 @app.get("/health", summary="Health Probe Endpoint")
 def health_check():
-    """Readiness probe endpoint confirming API status and model initialization."""
+    """
+    Readiness probe endpoint confirming API status, model file existence on disk,
+    and in-memory ML artifact initialization.
+    """
+    model_file_exists = os.path.exists(MODEL_PATH)
     is_loaded = model is not None and scaler is not None and selector is not None
-    return {"status": "healthy", "model_loaded": is_loaded}
+
+    status_str = "healthy" if (is_loaded and model_file_exists) else "degraded"
+    return {
+        "status": status_str,
+        "model_loaded": is_loaded,
+        "model_file_exists": model_file_exists,
+        "model_path": MODEL_PATH,
+    }
 
 
-@app.post("/predict", summary="Churn Risk Prediction Endpoint")
+@app.post(
+    "/predict",
+    summary="Churn Risk Prediction Endpoint",
+    response_description="Predicted subscriber churn probability, risk classification level, and binary churn flag.",
+)
 def predict_churn(payload: ChurnPredictionInput):
-    """Predict churn probability and return risk classification (Low, Medium, High)."""
+    r"""
+    Predict customer churn risk score and probability using pre-trained ML models.
+
+    ### Request Body Parameters:
+    - **Contract**: Subscriber contract type (`'Month-to-month'`, `'One year'`, `'Two year'`).
+    - **tenure**: Total tenure duration in months ($\ge 0$).
+    - **MonthlyCharges**: Monthly subscription charge in USD ($\ge 0.0$).
+    - **InternetService**: Internet service tier (`'Fiber optic'`, `'DSL'`, `'No'`).
+    - **PaymentMethod**: Billing payment method (`'Electronic check'`, `'Mailed check'`, `'Bank transfer (automatic)'`, `'Credit card (automatic)'`).
+    - **TechSupport** / **OnlineSecurity**: Add-on security services (`'Yes'`, `'No'`, `'No internet service'`).
+    - **SeniorCitizen**: Senior citizen status flag (`0` or `1`).
+
+    ### Returns:
+    - **churn_probability**: Float between 0.0 and 1.0 representing churn probability.
+    - **risk_level**: Operational risk tier classification (`'High'`, `'Medium'`, `'Low'`).
+    - **predicted_churn**: Binary churn flag (`1` for high risk $P > 0.50$, `0` for retained).
+
+    ### Error Responses:
+    - **422 Unprocessable Entity**: Invalid input schema or unrecognized categorical string value.
+    - **503 Service Unavailable**: ML model artifacts not loaded into memory.
+    - **500 Internal Server Error**: Downstream inference execution error.
+    """
     if model is None or scaler is None or selector is None:
         raise HTTPException(
             status_code=503,
