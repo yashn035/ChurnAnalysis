@@ -133,7 +133,7 @@ def main():
     # -------------------------------------------------------------------------
     # STEP 1: Load Dataset & Drop customerID
     # -------------------------------------------------------------------------
-    data_path = 'customer_data.csv'
+    data_path = 'data/customer_data.csv' if os.path.exists('data/customer_data.csv') else 'customer_data.csv'
     generate_synthetic_data(data_path)
         
     print("\n--- STEP 1: Loading Dataset ---")

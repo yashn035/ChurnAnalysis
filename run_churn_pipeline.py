@@ -225,11 +225,12 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
 
 def main():
     parser = argparse.ArgumentParser(description="Run Customer Churn Machine Learning Pipeline")
+    default_path = 'data/customer_data.csv' if os.path.exists('data/customer_data.csv') else 'customer_data.csv'
     parser.add_argument(
         '--data',
         type=str,
-        default='customer_data.csv',
-        help="Path to input customer dataset CSV file (default: 'customer_data.csv')"
+        default=default_path,
+        help=f"Path to input customer dataset CSV file (default: '{default_path}')"
     )
     args = parser.parse_args()
     
