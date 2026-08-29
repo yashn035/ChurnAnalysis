@@ -7,6 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import streamlit as st
+import matplotlib.pyplot as plt
 
 # Page configuration
 st.set_page_config(
@@ -45,7 +46,7 @@ df = load_data()
 st.sidebar.header("🕹️ Dashboard Navigation")
 app_mode = st.sidebar.radio(
     "Select View Mode",
-    ["Executive Summary KPIs", "Interactive Individual Risk Calculator", "Top 20 High-Risk Target List", "A/B Retention Trial Cohorts"]
+    ["Executive Summary KPIs", "Interactive Individual Risk Calculator", "Top 20 High-Risk Target List", "A/B Retention Trial Cohorts", "📈 Model Performance History"]
 )
 
 # -----------------------------------------------------------------------------
@@ -172,6 +173,46 @@ elif app_mode == "A/B Retention Trial Cohorts":
             st.dataframe(var_df[['customerID', 'Contract', 'MonthlyCharges', 'churn_probability']].head(10), use_container_width=True)
     else:
         st.info("Run 'python ab_test_cohort.py' to generate A/B test CSV files.")
+
+# -----------------------------------------------------------------------------
+# MODE 5: MODEL PERFORMANCE HISTORY
+# -----------------------------------------------------------------------------
+elif app_mode == "📈 Model Performance History":
+    st.subheader("📈 Model Performance History & AUC Tracking")
+    st.markdown("Historical tracking of model evaluation metrics across execution runs.")
+    
+    metrics_file = 'metrics_history.csv'
+    if os.path.exists(metrics_file):
+        history_df = pd.read_csv(metrics_file)
+        
+        if not history_df.empty and 'AUC' in history_df.columns:
+            latest_row = history_df.iloc[-1]
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            col_m1.metric("Latest AUC-ROC", f"{latest_row['AUC']:.4f}")
+            col_m2.metric("Latest Precision", f"{latest_row['precision']:.1%}")
+            col_m3.metric("Latest Recall", f"{latest_row['recall']:.1%}")
+            col_m4.metric("Latest Accuracy", f"{latest_row['accuracy']:.1%}")
+            
+            st.markdown("---")
+            st.markdown("### **AUC Performance Trend**")
+            fig, ax = plt.subplots(figsize=(10, 4))
+            ax.plot(history_df['timestamp'], history_df['AUC'], marker='o', color='#1f77b4', linewidth=2, label='AUC-ROC')
+            ax.set_xlabel('Execution Timestamp', fontsize=10)
+            ax.set_ylabel('AUC Score', fontsize=10)
+            ax.set_title('Historical Model AUC-ROC Score Trend', fontsize=12, fontweight='bold')
+            ax.set_ylim([0.5, 1.0])
+            ax.grid(True, linestyle='--', alpha=0.5)
+            plt.xticks(rotation=45, ha='right')
+            plt.tight_layout()
+            st.pyplot(fig)
+            
+            st.markdown("---")
+            st.markdown("### **Execution Log Data**")
+            st.dataframe(history_df, use_container_width=True)
+        else:
+            st.warning("Metrics history file is empty or corrupted.")
+    else:
+        st.info("No historical metric data found yet. Run `python churn_analysis.py` or `make pipeline` to record initial performance history.")
 
 st.markdown("---")
 st.markdown("© 2026 Customer Churn Analysis & Retention System | Senior Lead Data Scientist")

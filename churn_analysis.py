@@ -23,7 +23,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTE
-from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+from datetime import datetime
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, precision_score, recall_score, accuracy_score
 import shap
 import warnings
 
@@ -418,6 +419,30 @@ def main():
     output_df.to_csv('churn_predictions_v2.csv', index=False)
     output_df.to_csv('churn_predictions.csv', index=False)
     print(f"Successfully saved test predictions to 'churn_predictions_v2.csv' & 'churn_predictions.csv'.")
+
+    # Log metrics to metrics_history.csv
+    y_pred_best = best_model.predict(X_test_sel)
+    best_precision = precision_score(y_test, y_pred_best)
+    best_recall = recall_score(y_test, y_pred_best)
+    best_accuracy = accuracy_score(y_test, y_pred_best)
+    train_shape = f"{X_train_res.shape[0]}x{X_train_res.shape[1]}"
+    timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    metrics_df = pd.DataFrame([{
+        'timestamp': timestamp_str,
+        'AUC': np.round(best_auc, 4),
+        'precision': np.round(best_precision, 4),
+        'recall': np.round(best_recall, 4),
+        'accuracy': np.round(best_accuracy, 4),
+        'training_data_shape': train_shape
+    }])
+
+    metrics_file = 'metrics_history.csv'
+    if not os.path.exists(metrics_file):
+        metrics_df.to_csv(metrics_file, index=False)
+    else:
+        metrics_df.to_csv(metrics_file, mode='a', header=False, index=False)
+    print(f"Appended current model metrics to '{metrics_file}'.")
 
     # -------------------------------------------------------------------------
     # STEP 11: Business Interpretation & Actionable Retention Strategies
