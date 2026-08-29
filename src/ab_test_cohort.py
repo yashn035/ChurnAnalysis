@@ -12,11 +12,11 @@ from sklearn.model_selection import train_test_split
 
 RANDOM_STATE = 42
 
-def generate_ab_test_cohorts(input_csv='churn_predictions_v2.csv'):
+def generate_ab_test_cohorts(input_csv='data/processed/churn_predictions_v2.csv'):
     if not os.path.exists(input_csv):
-        input_csv = 'churn_predictions.csv'
+        input_csv = 'data/processed/churn_predictions.csv' if os.path.exists('data/processed/churn_predictions.csv') else 'churn_predictions_v2.csv'
         if not os.path.exists(input_csv):
-            raise FileNotFoundError("Neither 'churn_predictions_v2.csv' nor 'churn_predictions.csv' was found.")
+            raise FileNotFoundError("Neither 'data/processed/churn_predictions_v2.csv' nor 'churn_predictions.csv' was found.")
             
     print(f"[INFO] Loading predictions from '{input_csv}'...")
     df = pd.read_csv(input_csv)
@@ -56,8 +56,9 @@ def generate_ab_test_cohorts(input_csv='churn_predictions_v2.csv'):
     variant_df['treatment_offer'] = '15% Monthly Discount for 1-Year Lock-In'
     
     # Export CSV files
-    control_file = 'ab_test_control.csv'
-    variant_file = 'ab_test_variant.csv'
+    os.makedirs('data/processed', exist_ok=True)
+    control_file = 'data/processed/ab_test_control.csv'
+    variant_file = 'data/processed/ab_test_variant.csv'
     
     control_df.to_csv(control_file, index=False)
     variant_df.to_csv(variant_file, index=False)

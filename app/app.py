@@ -24,12 +24,16 @@ st.markdown("---")
 # Data Loader
 @st.cache_data
 def load_data():
-    if os.path.exists('churn_predictions_v2.csv'):
+    if os.path.exists('data/processed/churn_predictions_v2.csv'):
+        df = pd.read_csv('data/processed/churn_predictions_v2.csv')
+    elif os.path.exists('churn_predictions_v2.csv'):
         df = pd.read_csv('churn_predictions_v2.csv')
+    elif os.path.exists('data/processed/churn_predictions.csv'):
+        df = pd.read_csv('data/processed/churn_predictions.csv')
     elif os.path.exists('churn_predictions.csv'):
         df = pd.read_csv('churn_predictions.csv')
     else:
-        st.error("Prediction data file not found. Please run 'python churn_analysis.py' first.")
+        st.error("Prediction data file not found. Please run 'python src/churn_analysis.py' first.")
         st.stop()
 
     if 'tenure_group' not in df.columns and 'tenure' in df.columns:
@@ -158,9 +162,12 @@ elif app_mode == "A/B Retention Trial Cohorts":
     
     col_c, col_v = st.columns(2)
     
-    if os.path.exists('ab_test_control.csv') and os.path.exists('ab_test_variant.csv'):
-        ctrl_df = pd.read_csv('ab_test_control.csv')
-        var_df = pd.read_csv('ab_test_variant.csv')
+    ctrl_path = 'data/processed/ab_test_control.csv' if os.path.exists('data/processed/ab_test_control.csv') else 'ab_test_control.csv'
+    var_path = 'data/processed/ab_test_variant.csv' if os.path.exists('data/processed/ab_test_variant.csv') else 'ab_test_variant.csv'
+    
+    if os.path.exists(ctrl_path) and os.path.exists(var_path):
+        ctrl_df = pd.read_csv(ctrl_path)
+        var_df = pd.read_csv(var_path)
         
         with col_c:
             st.markdown(f"### Control Group ({len(ctrl_df)} Accounts)")
@@ -172,7 +179,7 @@ elif app_mode == "A/B Retention Trial Cohorts":
             st.markdown("**Offer**: 15% Monthly Discount for 1-Year Lock-In")
             st.dataframe(var_df[['customerID', 'Contract', 'MonthlyCharges', 'churn_probability']].head(10), use_container_width=True)
     else:
-        st.info("Run 'python ab_test_cohort.py' to generate A/B test CSV files.")
+        st.info("Run 'python src/ab_test_cohort.py' to generate A/B test CSV files.")
 
 # -----------------------------------------------------------------------------
 # MODE 5: MODEL PERFORMANCE HISTORY
@@ -181,7 +188,7 @@ elif app_mode == "📈 Model Performance History":
     st.subheader("📈 Model Performance History & AUC Tracking")
     st.markdown("Historical tracking of model evaluation metrics across execution runs.")
     
-    metrics_file = 'metrics_history.csv'
+    metrics_file = 'data/processed/metrics_history.csv' if os.path.exists('data/processed/metrics_history.csv') else 'metrics_history.csv'
     if os.path.exists(metrics_file):
         history_df = pd.read_csv(metrics_file)
         

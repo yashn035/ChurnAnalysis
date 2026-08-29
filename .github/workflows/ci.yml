@@ -30,7 +30,7 @@ jobs:
 
     - name: Run ML Pipeline & Verification
       run: |
-        python churn_analysis.py
-        python run_churn_pipeline.py --data data/customer_data.csv
-        python ab_test_cohort.py
-        python generate_tableau_workbook.py
+        python src/churn_analysis.py
+        python src/run_churn_pipeline.py --data data/customer_data.csv
+        python src/ab_test_cohort.py
+        python src/generate_tableau_workbook.py

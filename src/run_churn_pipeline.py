@@ -30,7 +30,7 @@ logger = get_json_logger("churn_pipeline_cli", "logs/pipeline.jsonl")
 RANDOM_STATE = 42
 
 
-def run_pipeline(data_path, output_path='predictions_output.csv'):
+def run_pipeline(data_path, output_path='data/processed/predictions_output.csv'):
     try:
         t_start = time.time()
         logger.info(f"Starting Churn Pipeline execution on input file: '{data_path}'")

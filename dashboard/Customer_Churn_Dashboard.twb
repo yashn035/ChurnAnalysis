@@ -1,19 +1,4 @@
-"""
-Tableau Workbook (.twb) Programmatic XML Generator
-Generates an executable Tableau Workbook file (Customer_Churn_Dashboard.twb)
-pointing directly to churn_predictions.csv in the current working directory.
-"""
-
-import os
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
-
-def generate_tableau_twb(csv_filename='churn_predictions.csv', output_twb='Customer_Churn_Dashboard.twb'):
-    abs_csv_path = os.path.abspath(csv_filename)
-    csv_dir = os.path.dirname(abs_csv_path)
-    base_csv_name = os.path.basename(abs_csv_path)
-
-    xml_content = f"""<?xml version='1.0' encoding='utf-8' ?>
+<?xml version='1.0' encoding='utf-8' ?>
 <workbook version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>
   <preferences>
     <preference name='ui.encoding.shelf.height' value='24' />
@@ -24,10 +9,10 @@ def generate_tableau_twb(csv_filename='churn_predictions.csv', output_twb='Custo
       <connection class='federated'>
         <named-connections>
           <named-connection caption='churn_predictions' name='textscan.churn_predictions'>
-            <connection class='textscan' directory='{csv_dir}' filename='{base_csv_name}' password='' server='' />
+            <connection class='textscan' directory='C:\Users\yashn\CustomerChurnAnalysis\data\processed' filename='churn_predictions_v2.csv' password='' server='' />
           </named-connection>
         </named-connections>
-        <relation connection='textscan.churn_predictions' name='{base_csv_name}' table='[{base_csv_name}]' type='table'>
+        <relation connection='textscan.churn_predictions' name='churn_predictions_v2.csv' table='[churn_predictions_v2.csv]' type='table'>
           <columns character-set='UTF-8' header='yes' locale='en_US' separator=',' />
         </relation>
         <metadata-records>
@@ -35,77 +20,77 @@ def generate_tableau_twb(csv_filename='churn_predictions.csv', output_twb='Custo
             <remote-name>customerID</remote-name>
             <remote-type>129</remote-type>
             <local-name>[customerID]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>string</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>Contract</remote-name>
             <remote-type>129</remote-type>
             <local-name>[Contract]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>string</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>PaymentMethod</remote-name>
             <remote-type>129</remote-type>
             <local-name>[PaymentMethod]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>string</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>InternetService</remote-name>
             <remote-type>129</remote-type>
             <local-name>[InternetService]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>string</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>tenure_group</remote-name>
             <remote-type>129</remote-type>
             <local-name>[tenure_group]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>string</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>tenure</remote-name>
             <remote-type>20</remote-type>
             <local-name>[tenure]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>integer</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>MonthlyCharges</remote-name>
             <remote-type>5</remote-type>
             <local-name>[MonthlyCharges]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>real</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>TotalCharges</remote-name>
             <remote-type>5</remote-type>
             <local-name>[TotalCharges]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>real</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>actual_churn</remote-name>
             <remote-type>20</remote-type>
             <local-name>[actual_churn]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>integer</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>predicted_churn</remote-name>
             <remote-type>20</remote-type>
             <local-name>[predicted_churn]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>integer</datatype>
           </metadata-record>
           <metadata-record class='column'>
             <remote-name>churn_probability</remote-name>
             <remote-type>5</remote-type>
             <local-name>[churn_probability]</local-name>
-            <parent-name>[{base_csv_name}]</parent-name>
+            <parent-name>[churn_predictions_v2.csv]</parent-name>
             <datatype>real</datatype>
           </metadata-record>
         </metadata-records>
@@ -257,13 +242,3 @@ def generate_tableau_twb(csv_filename='churn_predictions.csv', output_twb='Custo
     </dashboard>
   </dashboardsContainer>
 </workbook>
-"""
-
-    with open(output_twb, 'w', encoding='utf-8') as f:
-        f.write(xml_content)
-        
-    print(f"[SUCCESS] Programmatic Tableau Workbook generated: '{output_twb}'")
-    return output_twb
-
-if __name__ == '__main__':
-    generate_tableau_twb()

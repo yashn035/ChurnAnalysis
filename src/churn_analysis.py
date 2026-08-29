@@ -344,9 +344,12 @@ def evaluate_and_export(models, X_test_sel, y_test, readable_df, selected_featur
     output_df['predicted_churn'] = best_model.predict(X_test_sel)
     output_df['churn_probability'] = np.round(best_model.predict_proba(X_test_sel)[:, 1], 4)
 
-    output_df.to_csv('churn_predictions_v2.csv', index=False)
-    output_df.to_csv('churn_predictions.csv', index=False)
-    print("Successfully saved test predictions to 'churn_predictions_v2.csv' & 'churn_predictions.csv'.")
+    os.makedirs('data/processed', exist_ok=True)
+    os.makedirs('models', exist_ok=True)
+
+    output_df.to_csv('data/processed/churn_predictions_v2.csv', index=False)
+    output_df.to_csv('data/processed/churn_predictions.csv', index=False)
+    print("Successfully saved test predictions to 'data/processed/churn_predictions_v2.csv' & 'churn_predictions.csv'.")
 
     y_pred_best = best_model.predict(X_test_sel)
     best_precision = precision_score(y_test, y_pred_best)
@@ -364,17 +367,17 @@ def evaluate_and_export(models, X_test_sel, y_test, readable_df, selected_featur
         'training_data_shape': train_shape
     }])
 
-    metrics_file = 'metrics_history.csv'
+    metrics_file = 'data/processed/metrics_history.csv'
     if not os.path.exists(metrics_file):
         metrics_df.to_csv(metrics_file, index=False)
     else:
         metrics_df.to_csv(metrics_file, mode='a', header=False, index=False)
     print(f"Appended current model metrics to '{metrics_file}'.")
 
-    joblib.dump(best_model, 'model.pkl')
-    joblib.dump(scaler, 'scaler.pkl')
-    joblib.dump(selector, 'selector.pkl')
-    print("Successfully saved 'model.pkl', 'scaler.pkl', and 'selector.pkl'.")
+    joblib.dump(best_model, 'models/model.pkl')
+    joblib.dump(scaler, 'models/scaler.pkl')
+    joblib.dump(selector, 'models/selector.pkl')
+    print("Successfully saved 'models/model.pkl', 'models/scaler.pkl', and 'models/selector.pkl'.")
 
     return best_model, best_auc, feature_imp_df
 

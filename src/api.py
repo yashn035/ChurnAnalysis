@@ -29,9 +29,9 @@ app.add_middleware(
 )
 
 # Global variables for loaded ML artifacts
-MODEL_PATH = "model.pkl"
-SCALER_PATH = "scaler.pkl"
-SELECTOR_PATH = "selector.pkl"
+MODEL_PATH = "models/model.pkl" if os.path.exists("models/model.pkl") else "model.pkl"
+SCALER_PATH = "models/scaler.pkl" if os.path.exists("models/scaler.pkl") else "scaler.pkl"
+SELECTOR_PATH = "models/selector.pkl" if os.path.exists("models/selector.pkl") else "selector.pkl"
 
 model = None
 scaler = None

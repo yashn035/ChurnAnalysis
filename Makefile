@@ -1,4 +1,4 @@
-.PHONY: install run test pipeline all help
+.PHONY: install run test pipeline api frontend all help
 
 # Default target
 help:
@@ -7,22 +7,24 @@ help:
 	@echo "  make run       - Launch the interactive Streamlit web dashboard"
 	@echo "  make test      - Run the unit test suite with pytest"
 	@echo "  make pipeline  - Run the end-to-end ML churn analysis pipeline"
+	@echo "  make api       - Launch the FastAPI prediction backend server"
+	@echo "  make frontend  - Launch the Next.js predictor web interface"
 	@echo "  make all       - Install dependencies, run tests, and start Streamlit app"
 
 install:
 	pip install -r requirements.txt
 
 run:
-	streamlit run app.py
+	streamlit run app/app.py
 
 test:
 	pytest tests/
 
 pipeline:
-	python churn_analysis.py
+	python src/churn_analysis.py
 
 api:
-	uvicorn api:app --reload --port 8000
+	uvicorn src.api:app --reload --port 8000
 
 frontend:
 	cd frontend && npm run dev
