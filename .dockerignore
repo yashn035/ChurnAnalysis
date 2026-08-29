@@ -1,0 +1,14 @@
+# Exclude bytecode, logs, git files, and temporary directories
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+.github/
+*.log
+.venv/
+env/
+venv/
+.pytest_cache/
+.DS_Store
