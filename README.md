@@ -190,15 +190,33 @@ make run        # Launch Streamlit app
    pip install -r requirements.txt
    ```
 
-3. Run the ML pipeline:
+3. Enable git pre-commit hooks:
    ```bash
-   python churn_analysis.py
+   pre-commit install
    ```
 
-4. Launch the local Streamlit application:
+4. Run the ML pipeline:
    ```bash
-   streamlit run app.py
+   python src/churn_analysis.py
    ```
+
+5. Launch the local Streamlit application:
+   ```bash
+   streamlit run app/app.py
+   ```
+
+### 🪝 Code Quality & Pre-commit Hooks
+
+The repository enforces strict code formatting and linting via `.pre-commit-config.yaml`:
+* **Code Formatting**: `black`
+* **Import Sorting**: `isort`
+* **Linting & Rules**: `flake8`
+* **File Cleanup**: `trailing-whitespace` and `end-of-file-fixer`
+
+Run `pre-commit install` once after cloning to automatically check code quality on every `git commit`. You can also manually run all hooks across the codebase:
+```bash
+pre-commit run --all-files
+```
 
 ---
 
