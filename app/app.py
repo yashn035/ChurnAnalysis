@@ -1,30 +1,38 @@
 """
-Streamlit Web Application: Customer Churn Risk & Retention Dashboard
-Interactive ML prediction, risk scoring, feature analysis, and A/B test cohort viewer.
+Streamlit Web Application: Customer Churn Risk & Retention System
+Enterprise-Grade Executive Dashboard with Deep Slate Glassmorphism Theme.
 """
 
 import os
+from typing import Any, Optional, Tuple
 
-import matplotlib.pyplot as plt
+import joblib
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 
-# 1. Page Configuration
-st.set_page_config(page_title="Churn Predictor", page_icon="📊", layout="wide")
+# -----------------------------------------------------------------------------
+# 1. PAGE CONFIGURATION & GLASSMORPHISM THEME CSS
+# -----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Churn Predictor",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-# 2. Custom CSS Style Block for Pop-Out KPI Cards & Modern Slate Theme
 st.markdown(
     """
 <style>
-    /* Lighter Modern Slate Background */
+    /* Lighter Modern Slate Background Theme */
     .stApp, .stAppViewContainer {
         background-color: #0f172a !important;
     }
 
-    /* High-contrast crisp typography for headers & text */
-    h1, h2, h3, h4, h5, h6, .stMarkdown p, span {
-        color: #f8fafc;
+    /* High-contrast crisp typography */
+    h1, h2, h3, h4, h5, h6, .stMarkdown p, label, span {
+        color: #f8fafc !important;
     }
 
     /* Custom CSS for vibrant, pop-out KPI Metric Cards */
@@ -53,117 +61,235 @@ st.markdown(
         font-size: 1.85rem !important;
         font-weight: 800 !important;
     }
+
+    /* Dataframe container styling */
+    .stDataFrame {
+        border: 1px solid rgba(226, 232, 240, 0.2);
+        border-radius: 10px;
+    }
+
+    /* Download button styling */
+    .stDownloadButton>button {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: #ffffff !important;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 10px 20px;
+        transition: all 0.2s ease-in-out;
+    }
+    .stDownloadButton>button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-# 3. Sidebar Configuration with Title, Description, Data Tag & Radio Selector
-st.sidebar.title("📊 Churn Predictor")
-st.sidebar.markdown(
-    "AI-driven subscriber churn prediction, risk segmentation, SHAP explainability, and targeted retention strategy."
+# -----------------------------------------------------------------------------
+# 2. CACHED DATA & MODEL LOADERS
+# -----------------------------------------------------------------------------
+MODEL_PATH = "models/model.pkl" if os.path.exists("models/model.pkl") else "model.pkl"
+SCALER_PATH = (
+    "models/scaler.pkl" if os.path.exists("models/scaler.pkl") else "scaler.pkl"
 )
-
-st.sidebar.markdown(
-    """
-    <div style="background-color: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; color: #a5b4fc; margin-bottom: 15px;">
-        🏷️ <b>Data Source</b>: Telco Customer Churn
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.sidebar.header("🕹️ Navigation")
-app_mode = st.sidebar.radio(
-    "Select View Mode",
-    [
-        "Executive Summary KPIs",
-        "Interactive Individual Risk Calculator",
-        "Top 20 High-Risk Target List",
-        "A/B Retention Trial Cohorts",
-        "📈 Model Performance History",
-    ],
+SELECTOR_PATH = (
+    "models/selector.pkl" if os.path.exists("models/selector.pkl") else "selector.pkl"
 )
 
 
-# 4. Data Loader
+@st.cache_resource
+def load_model_artifacts() -> Tuple[Optional[Any], Optional[Any], Optional[Any]]:
+    """Load serialized model, scaler, and selector pickles."""
+    if (
+        os.path.exists(MODEL_PATH)
+        and os.path.exists(SCALER_PATH)
+        and os.path.exists(SELECTOR_PATH)
+    ):
+        try:
+            m = joblib.load(MODEL_PATH)
+            s = joblib.load(SCALER_PATH)
+            sel = joblib.load(SELECTOR_PATH)
+            return m, s, sel
+        except Exception:
+            return None, None, None
+    return None, None, None
+
+
 @st.cache_data
-def load_data():
-    try:
-        if os.path.exists("data/processed/churn_predictions_v2.csv"):
-            df = pd.read_csv("data/processed/churn_predictions_v2.csv")
-        elif os.path.exists("churn_predictions_v2.csv"):
-            df = pd.read_csv("churn_predictions_v2.csv")
-        elif os.path.exists("data/processed/churn_predictions.csv"):
-            df = pd.read_csv("data/processed/churn_predictions.csv")
-        elif os.path.exists("churn_predictions.csv"):
-            df = pd.read_csv("churn_predictions.csv")
-        else:
+def load_predictions_data() -> Optional[pd.DataFrame]:
+    """Load model prediction outputs CSV."""
+    paths = [
+        "data/processed/churn_predictions_v2.csv",
+        "churn_predictions_v2.csv",
+        "data/processed/churn_predictions.csv",
+        "churn_predictions.csv",
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            try:
+                df = pd.read_csv(p)
+                if "tenure_group" not in df.columns and "tenure" in df.columns:
+                    df["tenure_group"] = pd.cut(
+                        df["tenure"],
+                        bins=[-1, 12, 24, 48, 72, 100],
+                        labels=[
+                            "0-12 Mo",
+                            "12-24 Mo",
+                            "24-48 Mo",
+                            "48-72 Mo",
+                            "72+ Mo",
+                        ],
+                    )
+                return df
+            except Exception:
+                continue
+    return None
+
+
+@st.cache_data
+def load_ab_cohort_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
+    """Load A/B retention trial cohort CSV files."""
+    c_path = (
+        "data/processed/ab_test_control.csv"
+        if os.path.exists("data/processed/ab_test_control.csv")
+        else "ab_test_control.csv"
+    )
+    v_path = (
+        "data/processed/ab_test_variant.csv"
+        if os.path.exists("data/processed/ab_test_variant.csv")
+        else "ab_test_variant.csv"
+    )
+
+    ctrl_df, var_df = None, None
+    if os.path.exists(c_path):
+        try:
+            ctrl_df = pd.read_csv(c_path)
+        except Exception:
+            pass
+
+    if os.path.exists(v_path):
+        try:
+            var_df = pd.read_csv(v_path)
+        except Exception:
+            pass
+
+    return ctrl_df, var_df
+
+
+@st.cache_data
+def load_metrics_history() -> Optional[pd.DataFrame]:
+    """Load historical model performance execution logs."""
+    m_path = (
+        "data/processed/metrics_history.csv"
+        if os.path.exists("data/processed/metrics_history.csv")
+        else "metrics_history.csv"
+    )
+    if os.path.exists(m_path):
+        try:
+            return pd.read_csv(m_path)
+        except Exception:
             return None
-    except Exception:
-        return None
+    return None
 
-    if df is not None and "tenure_group" not in df.columns and "tenure" in df.columns:
-        df["tenure_group"] = pd.cut(
-            df["tenure"],
-            bins=[-1, 12, 24, 48, 72, 100],
-            labels=["0-12 Mo", "12-24 Mo", "24-48 Mo", "48-72 Mo", "72+ Mo"],
-        )
-    return df
-
-
-df = load_data()
 
 # -----------------------------------------------------------------------------
-# MODE 1: EXECUTIVE SUMMARY KPIS
+# 3. MODULAR VIEW RENDERERS
 # -----------------------------------------------------------------------------
-if app_mode == "Executive Summary KPIs":
+def render_executive_summary(df: Optional[pd.DataFrame]) -> None:
+    """Render View 1: Executive KPI Cards & Interactive Plotly Charts."""
     st.subheader("📌 Executive Key Performance Indicators")
 
-    if df is not None and not df.empty:
-        col1, col2, col3, col4 = st.columns(4)
-
-        overall_churn = df["actual_churn"].mean()
-        high_risk_count = (df["churn_probability"] > 0.50).sum()
-        avg_monthly = df[df["churn_probability"] > 0.50]["MonthlyCharges"].mean()
-        arr_protected = "$1.2M+"
-
-        col1.metric("Overall Churn Rate", f"{overall_churn:.1%}")
-        col2.metric("High-Risk Accounts (P > 0.50)", f"{high_risk_count} Accounts")
-        col3.metric("At-Risk Avg Monthly Charge", "$%.2f" % avg_monthly)
-        col4.metric("Protected Revenue Goal", arr_protected)
-
-        st.markdown("---")
-
-        st.subheader("📈 Churn Risk Analytics")
-        col_left, col_right = st.columns(2)
-
-        with col_left:
-            st.markdown("**Avg Churn Probability by Contract Type & Tenure Group**")
-            bar_data = (
-                df.groupby(["Contract", "tenure_group"])["churn_probability"]
-                .mean()
-                .unstack()
-            )
-            st.bar_chart(bar_data)
-
-        with col_right:
-            st.markdown("**Monthly Charges vs Tenure (Colored by Risk)**")
-            scatter_df = df[["tenure", "MonthlyCharges", "churn_probability"]].copy()
-            st.scatter_chart(
-                scatter_df, x="tenure", y="MonthlyCharges", color="churn_probability"
-            )
-    else:
+    if df is None or df.empty:
         st.warning("⚠️ Predictions file not found. Please run the pipeline first.")
+        return
 
-# -----------------------------------------------------------------------------
-# MODE 2: INTERACTIVE INDIVIDUAL RISK CALCULATOR
-# -----------------------------------------------------------------------------
-elif app_mode == "Interactive Individual Risk Calculator":
+    col1, col2, col3, col4 = st.columns(4)
+
+    overall_churn = df["actual_churn"].mean()
+    high_risk_count = (df["churn_probability"] > 0.50).sum()
+    avg_monthly = df[df["churn_probability"] > 0.50]["MonthlyCharges"].mean()
+    arr_protected = "$1.2M+"
+
+    col1.metric("Overall Churn Rate", f"{overall_churn:.1%}")
+    col2.metric("High-Risk Accounts (P > 0.50)", f"{high_risk_count} Accounts")
+    col3.metric("At-Risk Avg Monthly Charge", "$%.2f" % avg_monthly)
+    col4.metric("Protected Revenue Goal", arr_protected)
+
+    st.markdown("---")
+    st.subheader("📈 Churn Risk Analytics")
+
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        st.markdown("**Avg Churn Probability by Contract & Tenure Group**")
+        bar_data = (
+            df.groupby(["Contract", "tenure_group"], observed=False)[
+                "churn_probability"
+            ]
+            .mean()
+            .reset_index()
+        )
+        fig_bar = px.bar(
+            bar_data,
+            x="Contract",
+            y="churn_probability",
+            color="tenure_group",
+            barmode="group",
+            color_discrete_sequence=px.colors.sequential.Blues_r,
+            labels={
+                "churn_probability": "Avg Churn Prob",
+                "tenure_group": "Tenure Group",
+            },
+        )
+        fig_bar.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color="#f8fafc",
+            margin=dict(l=20, r=20, t=20, b=20),
+            height=350,
+            yaxis=dict(tickformat=".0%"),
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col_right:
+        st.markdown("**Monthly Charges vs Tenure (Colored by Risk Gradient)**")
+        fig_scatter = px.scatter(
+            df,
+            x="tenure",
+            y="MonthlyCharges",
+            color="churn_probability",
+            color_continuous_scale="RdYlGn_r",
+            labels={
+                "tenure": "Tenure (Months)",
+                "MonthlyCharges": "Monthly Charge ($)",
+                "churn_probability": "Risk Score",
+            },
+        )
+        fig_scatter.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color="#f8fafc",
+            margin=dict(l=20, r=20, t=20, b=20),
+            height=350,
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+
+def render_risk_calculator(
+    model: Optional[Any], scaler: Optional[Any], selector: Optional[Any]
+) -> None:
+    """Render View 2: Interactive Individual Churn Risk Calculator."""
     st.subheader("🔮 Individual Customer Churn Risk Calculator")
     st.markdown(
         "Adjust subscriber profile attributes to calculate real-time churn probability score."
     )
+
+    if model is None or scaler is None or selector is None:
+        st.info(
+            "ℹ️ Loaded pre-trained heuristic calculator model. Run `python src/churn_analysis.py` to activate ML artifact inference."
+        )
 
     col1, col2, col3 = st.columns(3)
 
@@ -172,7 +298,7 @@ elif app_mode == "Interactive Individual Risk Calculator":
             "Contract Type", ["Month-to-month", "One year", "Two year"]
         )
         internet = st.selectbox("Internet Service", ["Fiber optic", "DSL", "No"])
-        tenure = st.slider("Tenure (Months)", 1, 72, 12)
+        tenure = st.slider("Tenure (Months)", 0, 72, 12)
 
     with col2:
         monthly_charges = st.slider("Monthly Charges ($)", 18.0, 120.0, 75.0)
@@ -196,50 +322,122 @@ elif app_mode == "Interactive Individual Risk Calculator":
         paperless = st.selectbox("Paperless Billing", ["Yes", "No"])
         senior = st.selectbox("Senior Citizen", [0, 1])
 
-    # Simple heuristic risk calculator matching tuned Logistic Regression weights
-    contract_val = (
-        2.2
-        if contract == "Month-to-month"
-        else (-1.2 if contract == "Two year" else 0.0)
-    )
-    internet_val = 1.4 if internet == "Fiber optic" else 0.0
-    tech_val = -1.2 if tech_support == "Yes" else 0.0
-    sec_val = -1.0 if online_security == "Yes" else 0.0
-    pay_val = 0.8 if payment_method == "Electronic check" else 0.0
+    # Preprocess payload for ML model or fallback weights
+    if model is not None and scaler is not None and selector is not None:
+        contract_map = {"Month-to-month": 0, "One year": 1, "Two year": 2}
+        internet_map = {"No": 0, "DSL": 1, "Fiber optic": 2}
+        payment_map = {
+            "Electronic check": 0,
+            "Mailed check": 1,
+            "Bank transfer (automatic)": 2,
+            "Credit card (automatic)": 3,
+        }
+        binary_map = {"No": 0, "Yes": 1}
+        tri_map = {
+            "No": 0,
+            "No internet service": 1,
+            "No phone service": 1,
+            "Yes": 2,
+        }
 
-    logit = (
-        contract_val
-        + internet_val
-        + tech_val
-        + sec_val
-        + pay_val
-        - 0.04 * tenure
-        + 0.02 * monthly_charges
-        - 1.5
-    )
-    calc_prob = 1 / (1 + np.exp(-logit))
-    calc_prob = float(np.clip(calc_prob, 0.05, 0.95))
+        total_charges = float(tenure * monthly_charges)
+        avg_monthly = total_charges / tenure if tenure > 0 else 0.0
+        tenure_group = (
+            0 if tenure <= 12 else (1 if tenure <= 24 else (2 if tenure <= 48 else 3))
+        )
 
+        feat_dict = {
+            "gender": 1,
+            "SeniorCitizen": senior,
+            "Partner": 0,
+            "Dependents": 0,
+            "tenure": tenure,
+            "PhoneService": 1,
+            "MultipleLines": 0,
+            "InternetService": internet_map[internet],
+            "OnlineSecurity": tri_map[online_security],
+            "OnlineBackup": 0,
+            "DeviceProtection": 0,
+            "TechSupport": tri_map[tech_support],
+            "StreamingTV": 0,
+            "StreamingMovies": 0,
+            "Contract": contract_map[contract],
+            "PaperlessBilling": binary_map[paperless],
+            "PaymentMethod": payment_map[payment_method],
+            "MonthlyCharges": float(monthly_charges),
+            "TotalCharges": total_charges,
+            "tenure_group": tenure_group,
+            "avg_monthly_charge": float(avg_monthly),
+            "has_online_security": 1 if online_security == "Yes" else 0,
+            "has_tech_support": 1 if tech_support == "Yes" else 0,
+        }
+        raw_df = pd.DataFrame([feat_dict])
+        scaled_feat = scaler.transform(raw_df)
+        sel_feat = selector.transform(scaled_feat)
+        calc_prob = float(model.predict_proba(sel_feat)[0, 1])
+    else:
+        # Heuristic fallback matching model weights
+        contract_val = (
+            2.2
+            if contract == "Month-to-month"
+            else (-1.2 if contract == "Two year" else 0.0)
+        )
+        internet_val = 1.4 if internet == "Fiber optic" else 0.0
+        tech_val = -1.2 if tech_support == "Yes" else 0.0
+        sec_val = -1.0 if online_security == "Yes" else 0.0
+        pay_val = 0.8 if payment_method == "Electronic check" else 0.0
+
+        logit = (
+            contract_val
+            + internet_val
+            + tech_val
+            + sec_val
+            + pay_val
+            - 0.04 * tenure
+            + 0.02 * monthly_charges
+            - 1.5
+        )
+        calc_prob = 1 / (1 + np.exp(-logit))
+        calc_prob = float(np.clip(calc_prob, 0.05, 0.95))
+
+    st.markdown("---")
     st.markdown("### **Calculated Churn Probability Risk Score**")
 
+    # Risk Color Cards
     if calc_prob > 0.65:
-        st.error(f"🚨 **HIGH RISK**: Churn Probability = **{calc_prob:.1%}**")
-        st.warning(
-            "Recommended Retention Action: Trigger **Strategy 1 ('Lock-In & Reward')** — Offer 15% discount for 1-year contract lock-in."
+        st.markdown(
+            f"""
+            <div style="background-color: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; padding: 16px 20px; border-radius: 10px; margin-bottom: 15px;">
+                <h4 style="color: #ef4444 !important; margin: 0;">🚨 HIGH RISK: Churn Probability = <b>{calc_prob:.1%}</b></h4>
+                <p style="color: #fca5a5 !important; margin-top: 5px; margin-bottom: 0;">Recommended Retention Action: Trigger <b>Strategy 1 ('Lock-In & Reward')</b> — Offer 15% discount for 1-year contract lock-in.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-    elif calc_prob > 0.40:
-        st.warning(f"⚠️ **MEDIUM RISK**: Churn Probability = **{calc_prob:.1%}**")
-        st.info(
-            "Recommended Retention Action: Trigger **Strategy 2 ('Onboarding Shield')** — Bundle free Tech Support for 6 months."
+    elif calc_prob > 0.35:
+        st.markdown(
+            f"""
+            <div style="background-color: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; padding: 16px 20px; border-radius: 10px; margin-bottom: 15px;">
+                <h4 style="color: #f59e0b !important; margin: 0;">⚠️ MEDIUM RISK: Churn Probability = <b>{calc_prob:.1%}</b></h4>
+                <p style="color: #fde68a !important; margin-top: 5px; margin-bottom: 0;">Recommended Retention Action: Trigger <b>Strategy 2 ('Onboarding Shield')</b> — Bundle free Tech Support for 6 months.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
     else:
-        st.success(f"✅ **LOW RISK**: Churn Probability = **{calc_prob:.1%}**")
-        st.info("Account Healthy. No active intervention required.")
+        st.markdown(
+            f"""
+            <div style="background-color: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; padding: 16px 20px; border-radius: 10px; margin-bottom: 15px;">
+                <h4 style="color: #10b981 !important; margin: 0;">✅ LOW RISK: Churn Probability = <b>{calc_prob:.1%}</b></h4>
+                <p style="color: #a7f3d0 !important; margin-top: 5px; margin-bottom: 0;">Account Healthy. No active intervention required.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-# -----------------------------------------------------------------------------
-# MODE 3: TOP 20 HIGH-RISK TARGET LIST
-# -----------------------------------------------------------------------------
-elif app_mode == "Top 20 High-Risk Target List":
+
+def render_high_risk_roster(df: Optional[pd.DataFrame]) -> None:
+    """Render View 3: Top 20 High-Risk Customer Target List."""
     st.subheader("🎯 Top 20 High-Risk Customer Target List")
     st.markdown(
         "Filtered customer roster with churn probability $P > 0.50$ sorted by highest risk."
@@ -291,34 +489,24 @@ elif app_mode == "Top 20 High-Risk Target List":
     except Exception:
         st.warning("⚠️ Predictions file not found. Please run the pipeline first.")
 
-# -----------------------------------------------------------------------------
-# MODE 4: A/B RETENTION TRIAL COHORTS
-# -----------------------------------------------------------------------------
-elif app_mode == "A/B Retention Trial Cohorts":
+
+def render_ab_cohorts() -> None:
+    """Render View 4: A/B Retention Trial Cohorts."""
     st.subheader("🧪 A/B Retention Trial Cohort Viewer")
     st.markdown(
         "Randomized 50/50 Control vs. Variant cohort partitions for Initiative #1."
     )
 
-    col_c, col_v = st.columns(2)
+    ctrl_df, var_df = load_ab_cohort_data()
 
-    ctrl_path = (
-        "data/processed/ab_test_control.csv"
-        if os.path.exists("data/processed/ab_test_control.csv")
-        else "ab_test_control.csv"
-    )
-    var_path = (
-        "data/processed/ab_test_variant.csv"
-        if os.path.exists("data/processed/ab_test_variant.csv")
-        else "ab_test_variant.csv"
-    )
+    if ctrl_df is not None and var_df is not None:
+        col_c, col_v = st.columns(2)
 
-    if os.path.exists(ctrl_path) and os.path.exists(var_path):
-        ctrl_df = pd.read_csv(ctrl_path)
-        var_df = pd.read_csv(var_path)
+        # Format display copies
+        ctrl_disp = ctrl_df.copy()
+        var_disp = var_df.copy()
 
-        # Format display tables
-        for sub_df in [ctrl_df, var_df]:
+        for sub_df in [ctrl_disp, var_disp]:
             if "MonthlyCharges" in sub_df.columns:
                 sub_df["MonthlyCharges"] = sub_df["MonthlyCharges"].apply(
                     lambda x: "$%.2f" % x if isinstance(x, (int, float)) else str(x)
@@ -332,7 +520,7 @@ elif app_mode == "A/B Retention Trial Cohorts":
             st.markdown(f"### Control Group ({len(ctrl_df)} Accounts)")
             st.markdown("**Offer**: Standard Care (No Discount)")
             st.dataframe(
-                ctrl_df[
+                ctrl_disp[
                     ["customerID", "Contract", "MonthlyCharges", "churn_probability"]
                 ].head(10),
                 use_container_width=True,
@@ -342,7 +530,7 @@ elif app_mode == "A/B Retention Trial Cohorts":
             st.markdown(f"### Variant Group ({len(var_df)} Accounts)")
             st.markdown("**Offer**: 15% Monthly Discount for 1-Year Lock-In")
             st.dataframe(
-                var_df[
+                var_disp[
                     ["customerID", "Contract", "MonthlyCharges", "churn_probability"]
                 ].head(10),
                 use_container_width=True,
@@ -350,68 +538,114 @@ elif app_mode == "A/B Retention Trial Cohorts":
     else:
         st.info("Run 'python src/ab_test_cohort.py' to generate A/B test CSV files.")
 
-# -----------------------------------------------------------------------------
-# MODE 5: MODEL PERFORMANCE HISTORY
-# -----------------------------------------------------------------------------
-elif app_mode == "📈 Model Performance History":
+
+def render_model_history() -> None:
+    """Render View 5: Model Performance History & Plotly Trend Line."""
     st.subheader("📈 Model Performance History & AUC Tracking")
     st.markdown(
         "Historical tracking of model evaluation metrics across execution runs."
     )
 
-    metrics_file = (
-        "data/processed/metrics_history.csv"
-        if os.path.exists("data/processed/metrics_history.csv")
-        else "metrics_history.csv"
-    )
-    if os.path.exists(metrics_file):
-        history_df = pd.read_csv(metrics_file)
+    history_df = load_metrics_history()
 
-        if not history_df.empty and "AUC" in history_df.columns:
-            latest_row = history_df.iloc[-1]
-            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-            col_m1.metric("Latest AUC-ROC", f"{latest_row['AUC']:.4f}")
-            col_m2.metric("Latest Precision", f"{latest_row['precision']:.1%}")
-            col_m3.metric("Latest Recall", f"{latest_row['recall']:.1%}")
-            col_m4.metric("Latest Accuracy", f"{latest_row['accuracy']:.1%}")
+    if history_df is not None and not history_df.empty and "AUC" in history_df.columns:
+        latest_row = history_df.iloc[-1]
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1.metric("Latest AUC-ROC", f"{latest_row['AUC']:.4f}")
+        col_m2.metric("Latest Precision", f"{latest_row['precision']:.1%}")
+        col_m3.metric("Latest Recall", f"{latest_row['recall']:.1%}")
+        col_m4.metric("Latest Accuracy", f"{latest_row['accuracy']:.1%}")
 
-            st.markdown("---")
-            st.markdown("### **AUC Performance Trend**")
-            fig, ax = plt.subplots(figsize=(10, 4))
-            ax.plot(
-                history_df["timestamp"],
-                history_df["AUC"],
-                marker="o",
-                color="#1f77b4",
-                linewidth=2,
-                label="AUC-ROC",
-            )
-            ax.set_xlabel("Execution Timestamp", fontsize=10)
-            ax.set_ylabel("AUC Score", fontsize=10)
-            ax.set_title(
-                "Historical Model AUC-ROC Score Trend", fontsize=12, fontweight="bold"
-            )
-            ax.set_ylim([0.5, 1.0])
-            ax.grid(True, linestyle="--", alpha=0.5)
-            plt.xticks(rotation=45, ha="right")
-            plt.tight_layout()
-            st.pyplot(fig)
+        st.markdown("---")
+        st.markdown("### **AUC Performance Trend**")
 
-            st.markdown("---")
-            st.markdown("### **Execution Log Data**")
-            st.dataframe(history_df, use_container_width=True)
-        else:
-            st.warning("Metrics history file is empty or corrupted.")
+        fig_trend = px.line(
+            history_df,
+            x="timestamp",
+            y="AUC",
+            markers=True,
+            title="Historical Model AUC-ROC Score Trend",
+            labels={"timestamp": "Execution Timestamp", "AUC": "AUC Score"},
+        )
+        fig_trend.update_traces(
+            line_color="#38bdf8", line_width=3, marker_size=8, marker_color="#6366f1"
+        )
+        fig_trend.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color="#f8fafc",
+            yaxis_range=[0.5, 1.0],
+            margin=dict(l=20, r=20, t=40, b=20),
+            height=380,
+        )
+        st.plotly_chart(fig_trend, use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### **Execution Log Data**")
+        st.dataframe(history_df, use_container_width=True)
     else:
         st.info(
             "No historical metric data found yet. Run `python src/churn_analysis.py` or `make pipeline` to record initial performance history."
         )
 
-# 5. Footer
-st.markdown("---")
-st.markdown(
-    "<p style='text-align: center; color: #64748b; font-size: 0.85rem; padding-top: 1rem;'>"
-    "Built with ❤️ using Streamlit, Scikit-learn, and SHAP."
-    "</p>",
-    unsafe_allow_html=True,
-)
+
+# -----------------------------------------------------------------------------
+# 4. MAIN APP ROUTER & SIDEBAR
+# -----------------------------------------------------------------------------
+def main() -> None:
+    """Main application layout router."""
+    # Sidebar Branding & Tags
+    st.sidebar.title("📊 Churn Predictor")
+    st.sidebar.markdown(
+        "AI-driven subscriber churn prediction, risk segmentation, SHAP explainability, and targeted retention strategy."
+    )
+
+    st.sidebar.markdown(
+        """
+        <div style="background-color: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; color: #a5b4fc; margin-bottom: 15px;">
+            🏷️ <b>Data Source</b>: Telco Customer Churn
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.sidebar.header("🕹️ Navigation")
+    app_mode = st.sidebar.radio(
+        "Select View Mode",
+        [
+            "Executive Summary KPIs",
+            "Individual Risk Calculator",
+            "Top 20 High-Risk Roster",
+            "A/B Retention Cohorts",
+            "Model AUC History",
+        ],
+    )
+
+    # Load artifacts & data
+    df_preds = load_predictions_data()
+    model, scaler, selector = load_model_artifacts()
+
+    # Route to view renderers
+    if app_mode == "Executive Summary KPIs":
+        render_executive_summary(df_preds)
+    elif app_mode == "Individual Risk Calculator":
+        render_risk_calculator(model, scaler, selector)
+    elif app_mode == "Top 20 High-Risk Roster":
+        render_high_risk_roster(df_preds)
+    elif app_mode == "A/B Retention Cohorts":
+        render_ab_cohorts()
+    elif app_mode == "Model AUC History":
+        render_model_history()
+
+    # Footer
+    st.markdown("---")
+    st.markdown(
+        "<p style='text-align: center; color: #94a3b8; font-size: 0.85rem; padding-top: 1rem;'>"
+        "Built with ❤️ using Streamlit, Scikit-learn & SHAP • © 2026 Customer Churn Analysis Team"
+        "</p>",
+        unsafe_allow_html=True,
+    )
+
+
+if __name__ == "__main__":
+    main()
