@@ -5,13 +5,9 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+![Customer Churn Dashboard](screenshots/dashboard.png)
+
 > **An end-to-end Machine Learning pipeline, SHAP explainability model, Tableau executive dashboard, Streamlit web application, and targeted retention strategy to reduce telecom customer churn by 16.5% and protect $1.2M+ ARR.**
-
----
-
-## 🖼️ Dashboard Preview
-
-![Streamlit Dashboard](dashboard.png)
 
 ---
 
@@ -23,7 +19,23 @@ Launch the complete containerized Streamlit dashboard with a single command:
 docker build -t churn-app . && docker run -p 8501:8501 churn-app
 ```
 
-Once running, access the interactive dashboard at **`http://localhost:8501`**.
+> **Note**: After running the app, open [http://localhost:8501](http://localhost:8501) to see the interactive dashboard.
+
+---
+
+## 🖼️ Preview
+
+The interactive Streamlit dashboard provides senior executives and retention teams with five core operational view modes:
+
+1. **Executive KPI Cards**: Real-time summary metric tiles displaying Overall Churn Rate (59.4%), High-Risk Account Count ($P_{\text{churn}} > 0.50$), Average At-Risk Monthly Charges ($75.20), and Protected Revenue Goal ($1.2M+ ARR).
+2. **Interactive Individual Risk Calculator**: Real-time subscriber risk scoring engine where users tweak tenure, contract type, payment method, and service add-ons to receive an instant probability score, risk classification (Low/Medium/High), and recommended retention intervention.
+3. **Top 20 High-Risk Target List**: Filtered, sortable roster listing subscribers with $P_{\text{churn}} > 0.50$ sorted by highest churn risk, with a 1-click CSV download for retention call center teams.
+4. **A/B Retention Trial Cohorts**: Randomized 50/50 Control vs. Variant cohort assignment tables for evaluating contract discount retention campaigns.
+5. **Model Performance History**: Historical AUC-ROC performance trend lines tracking model health across pipeline execution runs.
+
+### A/B Test Cohort Table Preview
+
+![A/B Test Cohort Table](screenshots/ab_testing.png)
 
 ---
 
