@@ -114,12 +114,45 @@ def preprocess_input(input_data: ChurnPredictionInput) -> pd.DataFrame:
     binary_map = {"No": 0, "Yes": 1}
     tri_map = {"No": 0, "No internet service": 1, "No phone service": 1, "Yes": 2}
 
+    # Validate categorical field encodings
+    validations = [
+        ("Contract", input_data.Contract, contract_map),
+        ("InternetService", input_data.InternetService, internet_map),
+        ("PaymentMethod", input_data.PaymentMethod, payment_map),
+        ("Partner", input_data.Partner, binary_map),
+        ("Dependents", input_data.Dependents, binary_map),
+        ("PhoneService", input_data.PhoneService, binary_map),
+        ("PaperlessBilling", input_data.PaperlessBilling, binary_map),
+        ("MultipleLines", input_data.MultipleLines, tri_map),
+        ("OnlineSecurity", input_data.OnlineSecurity, tri_map),
+        ("OnlineBackup", input_data.OnlineBackup, tri_map),
+        ("DeviceProtection", input_data.DeviceProtection, tri_map),
+        ("TechSupport", input_data.TechSupport, tri_map),
+        ("StreamingTV", input_data.StreamingTV, tri_map),
+        ("StreamingMovies", input_data.StreamingMovies, tri_map),
+    ]
+
+    try:
+        for field_name, value, mapping in validations:
+            if value not in mapping:
+                allowed_vals = ", ".join(f"'{k}'" for k in mapping.keys())
+                raise ValueError(
+                    f"Invalid value '{value}' for field '{field_name}'. Allowed values: {allowed_vals}"
+                )
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
+
     total_charges = input_data.TotalCharges
     if total_charges is None:
         total_charges = float(input_data.tenure * input_data.MonthlyCharges)
 
-    # Calculate tenure_group
+    # Calculate tenure_group & avg_monthly_charge (check tenure == 0)
     tenure_val = input_data.tenure
+    if tenure_val == 0:
+        avg_monthly_charge = 0.0
+    else:
+        avg_monthly_charge = float(total_charges / tenure_val)
+
     if tenure_val <= 12:
         tenure_group = 0
     elif tenure_val <= 24:
@@ -129,28 +162,27 @@ def preprocess_input(input_data: ChurnPredictionInput) -> pd.DataFrame:
     else:
         tenure_group = 3
 
-    avg_monthly_charge = (total_charges / tenure_val) if tenure_val > 0 else 0.0
     has_online_security = 1 if input_data.OnlineSecurity == "Yes" else 0
     has_tech_support = 1 if input_data.TechSupport == "Yes" else 0
 
     feature_dict = {
         "gender": 1 if input_data.gender == "Male" else 0,
         "SeniorCitizen": input_data.SeniorCitizen,
-        "Partner": binary_map.get(input_data.Partner, 0),
-        "Dependents": binary_map.get(input_data.Dependents, 0),
+        "Partner": binary_map[input_data.Partner],
+        "Dependents": binary_map[input_data.Dependents],
         "tenure": tenure_val,
-        "PhoneService": binary_map.get(input_data.PhoneService, 1),
-        "MultipleLines": tri_map.get(input_data.MultipleLines, 0),
-        "InternetService": internet_map.get(input_data.InternetService, 2),
-        "OnlineSecurity": tri_map.get(input_data.OnlineSecurity, 0),
-        "OnlineBackup": tri_map.get(input_data.OnlineBackup, 0),
-        "DeviceProtection": tri_map.get(input_data.DeviceProtection, 0),
-        "TechSupport": tri_map.get(input_data.TechSupport, 0),
-        "StreamingTV": tri_map.get(input_data.StreamingTV, 0),
-        "StreamingMovies": tri_map.get(input_data.StreamingMovies, 0),
-        "Contract": contract_map.get(input_data.Contract, 0),
-        "PaperlessBilling": binary_map.get(input_data.PaperlessBilling, 1),
-        "PaymentMethod": payment_map.get(input_data.PaymentMethod, 0),
+        "PhoneService": binary_map[input_data.PhoneService],
+        "MultipleLines": tri_map[input_data.MultipleLines],
+        "InternetService": internet_map[input_data.InternetService],
+        "OnlineSecurity": tri_map[input_data.OnlineSecurity],
+        "OnlineBackup": tri_map[input_data.OnlineBackup],
+        "DeviceProtection": tri_map[input_data.DeviceProtection],
+        "TechSupport": tri_map[input_data.TechSupport],
+        "StreamingTV": tri_map[input_data.StreamingTV],
+        "StreamingMovies": tri_map[input_data.StreamingMovies],
+        "Contract": contract_map[input_data.Contract],
+        "PaperlessBilling": binary_map[input_data.PaperlessBilling],
+        "PaymentMethod": payment_map[input_data.PaymentMethod],
         "MonthlyCharges": float(input_data.MonthlyCharges),
         "TotalCharges": float(total_charges),
         "tenure_group": tenure_group,
@@ -200,5 +232,7 @@ def predict_churn(payload: ChurnPredictionInput):
             "risk_level": risk_level,
             "predicted_churn": predicted_churn,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")

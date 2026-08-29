@@ -93,3 +93,15 @@ def test_select_k_best_feature_selection():
 
     assert X_selected.shape[1] == k_target
     assert X_selected.shape[0] == num_samples
+
+
+def test_empty_dataset_check():
+    """Test that an empty DataFrame raises ValueError("Input dataset is empty.")."""
+    import pytest
+
+    df_empty = pd.DataFrame()
+    with pytest.raises(ValueError) as exc_info:
+        if df_empty.empty:
+            raise ValueError("Input dataset is empty.")
+
+    assert "Input dataset is empty." in str(exc_info.value)

@@ -230,6 +230,8 @@ def load_data(data_path):
     print("\n--- STEP 1: Loading Dataset ---")
     generate_synthetic_data(data_path)
     df = pd.read_csv(data_path)
+    if df.empty:
+        raise ValueError("Input dataset is empty.")
     print(f"Dataset Loaded. Initial Shape: {df.shape}")
     customer_ids = df["customerID"].copy()
     df = df.drop(columns=["customerID"])

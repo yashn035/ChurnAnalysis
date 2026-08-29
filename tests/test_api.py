@@ -45,3 +45,35 @@ def test_predict_churn_low_risk():
     result = predict_churn(payload)
     assert result["risk_level"] == "Low"
     assert result["predicted_churn"] == 0
+
+
+def test_predict_churn_invalid_category():
+    """Test POST /predict with unknown category raises 422 HTTPException."""
+    import pytest
+    from fastapi import HTTPException
+
+    payload = ChurnPredictionInput(
+        Contract="InvalidContractType",
+        tenure=12,
+        MonthlyCharges=50.0,
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        predict_churn(payload)
+
+    assert exc_info.value.status_code == 422
+    assert (
+        "Invalid value 'InvalidContractType' for field 'Contract'"
+        in exc_info.value.detail
+    )
+
+
+def test_predict_churn_tenure_zero():
+    """Test POST /predict with tenure=0 calculates avg_monthly_charge as 0.0 without division by zero."""
+    payload = ChurnPredictionInput(
+        Contract="Month-to-month",
+        tenure=0,
+        MonthlyCharges=50.0,
+    )
+    result = predict_churn(payload)
+    assert "churn_probability" in result
+    assert result["risk_level"] in ["High", "Medium", "Low"]
