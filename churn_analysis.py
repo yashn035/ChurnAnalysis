@@ -24,7 +24,9 @@ from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTE
 import joblib
+import time
 from datetime import datetime
+from json_logger import get_json_logger, log_pipeline_step
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, precision_score, recall_score, accuracy_score
 import shap
 import warnings
@@ -126,6 +128,7 @@ def generate_synthetic_data(filepath='customer_data.csv', num_samples=1000):
 
 
 def main():
+    logger = get_json_logger("churn_analysis", "logs/pipeline.jsonl")
     print("=" * 80)
     print("      CUSTOMER CHURN ANALYSIS & RETENTION MODELING PIPELINE (V2 - HIGH AUC)")
     print("=" * 80)
@@ -133,6 +136,7 @@ def main():
     # -------------------------------------------------------------------------
     # STEP 1: Load Dataset & Drop customerID
     # -------------------------------------------------------------------------
+    t_start = time.time()
     data_path = 'data/customer_data.csv' if os.path.exists('data/customer_data.csv') else 'customer_data.csv'
     generate_synthetic_data(data_path)
         
@@ -144,6 +148,7 @@ def main():
     customer_ids = df['customerID'].copy()
     df = df.drop(columns=['customerID'])
     print("Dropped column: customerID")
+    log_pipeline_step(logger, 'data_load', time.time() - t_start, n_samples=len(df))
 
     # -------------------------------------------------------------------------
     # STEP 2: Data Cleaning & Target Encoding (Yes=1, No=0)
@@ -182,6 +187,7 @@ def main():
     # -------------------------------------------------------------------------
     # STEP 3: Feature Engineering & Ordinal Encodings
     # -------------------------------------------------------------------------
+    t_step = time.time()
     print("\n--- STEP 3: Feature Engineering & Ordinal Encodings ---")
     
     # 1. Contract Ordinal Encoding: Month-to-month=0, One year=1, Two year=2
@@ -219,6 +225,7 @@ def main():
         le = LabelEncoder()
         df[col] = le.fit_transform(df[col].astype(str))
     print(f"Encoded remaining {len(object_columns)} categorical features to numeric.")
+    log_pipeline_step(logger, 'feature_engineering', time.time() - t_step, n_samples=len(df))
 
     # -------------------------------------------------------------------------
     # STEP 4: Outlier Treatment (1.5x IQR Method)
@@ -265,13 +272,16 @@ def main():
     selected_feature_names = [raw_feature_names[i] for i in selected_indices]
     print(f"Selected Top 15 Features: {selected_feature_names}")
 
+    t_smote = time.time()
     smote = SMOTE(random_state=RANDOM_STATE)
     X_train_res, y_train_res = smote.fit_resample(X_train_sel, y_train)
     print(f"After SMOTE Train Class Distribution: {dict(pd.Series(y_train_res).value_counts())}")
+    log_pipeline_step(logger, 'smote', time.time() - t_smote, n_samples=len(X_train_res))
 
     # -------------------------------------------------------------------------
     # STEP 7: Hyperparameter Tuning via GridSearchCV (5-Fold CV, scoring='roc_auc')
     # -------------------------------------------------------------------------
+    t_train = time.time()
     print("\n--- STEP 7: Model Training & Grid Search CV ---")
 
     # 1. Logistic Regression
@@ -313,10 +323,12 @@ def main():
     grid_xgb.fit(X_train_res, y_train_res)
     best_xgb = grid_xgb.best_estimator_
     print(f"Best XGB Params: {grid_xgb.best_params_} | Best CV ROC-AUC: {grid_xgb.best_score_:.4f}")
+    log_pipeline_step(logger, 'model_training', time.time() - t_train, n_samples=len(X_train_res))
 
     # -------------------------------------------------------------------------
     # STEP 8: Model Evaluation on Test Set & Save Predictions v2
     # -------------------------------------------------------------------------
+    t_export = time.time()
     print("\n" + "=" * 80)
     print("--- STEP 8: Test Set Evaluation & Prediction Export ---")
     print("=" * 80)
@@ -420,6 +432,7 @@ def main():
     output_df.to_csv('churn_predictions_v2.csv', index=False)
     output_df.to_csv('churn_predictions.csv', index=False)
     print(f"Successfully saved test predictions to 'churn_predictions_v2.csv' & 'churn_predictions.csv'.")
+    log_pipeline_step(logger, 'prediction_export', time.time() - t_export, n_samples=len(X_test))
 
     # Log metrics to metrics_history.csv
     y_pred_best = best_model.predict(X_test_sel)

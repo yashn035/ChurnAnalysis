@@ -7,6 +7,7 @@ exports predictions to predictions_output.csv, and logs metrics & errors.
 import argparse
 import sys
 import os
+import time
 import logging
 import numpy as np
 import pandas as pd
@@ -18,34 +19,27 @@ from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+from json_logger import get_json_logger, log_pipeline_step
 import shap
 import warnings
 
 warnings.filterwarnings('ignore')
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('churn_pipeline.log', mode='w')
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = get_json_logger("churn_pipeline_cli", "logs/pipeline.jsonl")
 
 RANDOM_STATE = 42
 
 
 def run_pipeline(data_path, output_path='predictions_output.csv'):
     try:
+        t_start = time.time()
         logger.info(f"Starting Churn Pipeline execution on input file: '{data_path}'")
         
         if not os.path.exists(data_path):
             raise FileNotFoundError(f"Input data file '{data_path}' does not exist.")
             
         df = pd.read_csv(data_path)
-        logger.info(f"Loaded dataset shape: {df.shape}")
+        log_pipeline_step(logger, 'data_load', time.time() - t_start, n_samples=len(df))
         
         if 'customerID' not in df.columns:
             logger.warning("'customerID' column not found. Generating default index customer IDs.")
@@ -82,7 +76,8 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
         readable_df = df_model.copy()
         readable_df['customerID'] = customer_ids
         
-        # 4. Ordinal encodings
+        # 4. Ordinal encodings & Feature Engineering
+        t_fe = time.time()
         if 'Contract' in df_model.columns:
             df_model['Contract'] = df_model['Contract'].map({'Month-to-month': 0, 'One year': 1, 'Two year': 2}).fillna(0).astype(int)
             
@@ -121,6 +116,7 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
                 Q3 = df_model[col].quantile(0.75)
                 IQR = Q3 - Q1
                 df_model[col] = df_model[col].clip(lower=Q1 - 1.5 * IQR, upper=Q3 + 1.5 * IQR)
+        log_pipeline_step(logger, 'feature_engineering', time.time() - t_fe, n_samples=len(df_model))
                 
         # 8. Train-Test Split & Scaling
         X = df_model.drop(columns=['Churn'])
@@ -145,11 +141,13 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
         selected_feature_names = [raw_feature_names[i] for i in selected_indices]
         
         # 10. SMOTE Class Balancing
+        t_smote = time.time()
         smote = SMOTE(random_state=RANDOM_STATE)
         X_train_res, y_train_res = smote.fit_resample(X_train_sel, y_train)
+        log_pipeline_step(logger, 'smote', time.time() - t_smote, n_samples=len(X_train_res))
         
         # 11. GridSearchCV Tuning
-        logger.info("Tuning Logistic Regression, Random Forest, and XGBoost models...")
+        t_train = time.time()
         param_grid_lr = {'C': [0.01, 0.1, 1, 10]}
         grid_lr = GridSearchCV(LogisticRegression(random_state=RANDOM_STATE, max_iter=1000), param_grid_lr, cv=5, scoring='roc_auc', n_jobs=-1)
         grid_lr.fit(X_train_res, y_train_res)
@@ -161,6 +159,7 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
         param_grid_xgb = {'n_estimators': [50, 100], 'max_depth': [3, 5], 'learning_rate': [0.01, 0.05, 0.1]}
         grid_xgb = GridSearchCV(XGBClassifier(random_state=RANDOM_STATE, eval_metric='logloss'), param_grid_xgb, cv=5, scoring='roc_auc', n_jobs=-1)
         grid_xgb.fit(X_train_res, y_train_res)
+        log_pipeline_step(logger, 'model_training', time.time() - t_train, n_samples=len(X_train_res))
         
         models = {'Logistic Regression': grid_lr.best_estimator_, 'Random Forest': grid_rf.best_estimator_, 'XGBoost': grid_xgb.best_estimator_}
         
@@ -171,14 +170,11 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
         for name, model in models.items():
             y_prob = model.predict_proba(X_test_sel)[:, 1]
             auc_score = roc_auc_score(y_test, y_prob)
-            logger.info(f"Model: {name} | Test AUC-ROC: {auc_score:.4f}")
             if auc_score > best_auc:
                 best_auc = auc_score
                 best_model_name = name
                 best_model = model
                 
-        logger.info(f"Winner Model: '{best_model_name}' with Test AUC-ROC = {best_auc:.4f}")
-        
         # 12. Extract Feature Importances / Top Drivers
         if hasattr(best_model, 'feature_importances_'):
             importances = best_model.feature_importances_
@@ -193,6 +189,7 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
         top_5_drivers = feature_imp_df.head(5)['Feature'].tolist()
         
         # 13. Export Predictions
+        t_export = time.time()
         test_indices = y_test.index
         output_df = readable_df.loc[test_indices].copy()
         output_df['actual_churn'] = y_test.values
@@ -200,7 +197,7 @@ def run_pipeline(data_path, output_path='predictions_output.csv'):
         output_df['churn_probability'] = np.round(best_model.predict_proba(X_test_sel)[:, 1], 4)
         
         output_df.to_csv(output_path, index=False)
-        logger.info(f"Predictions successfully saved to '{output_path}' ({len(output_df)} rows).")
+        log_pipeline_step(logger, 'prediction_export', time.time() - t_export, n_samples=len(output_df))
         
         # 14. Print Executive Console Summary
         print("\n" + "=" * 80)

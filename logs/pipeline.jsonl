@@ -1,0 +1,5 @@
+{"timestamp": "2026-08-29T13:24:51", "level": "INFO", "step": "data_load", "execution_time_seconds": 0.351, "n_samples": 1000}
+{"timestamp": "2026-08-29T13:24:52", "level": "INFO", "step": "feature_engineering", "execution_time_seconds": 0.0975, "n_samples": 1000}
+{"timestamp": "2026-08-29T13:24:52", "level": "INFO", "step": "smote", "execution_time_seconds": 0.0416, "n_samples": 950}
+{"timestamp": "2026-08-29T13:25:05", "level": "INFO", "step": "model_training", "execution_time_seconds": 13.0722, "n_samples": 950}
+{"timestamp": "2026-08-29T13:25:05", "level": "INFO", "step": "prediction_export", "execution_time_seconds": 0.2342, "n_samples": 200}
