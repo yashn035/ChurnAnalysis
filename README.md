@@ -59,7 +59,7 @@ Customer acquisition in the telecommunications industry costs **5 to 7 times mor
 
 ## 📊 Dataset Description
 
-The system processes [`customer_data.csv`](file:///c:/Users/yashn/CustomerChurnAnalysis/customer_data.csv), containing **1,000 subscriber accounts** and **21 feature columns** matching the IBM / Kaggle Telco Customer Churn benchmark standard:
+The system processes [`data/customer_data.csv`](file:///c:/Users/yashn/CustomerChurnAnalysis/data/customer_data.csv), containing **1,000 subscriber accounts** and **21 feature columns** matching the IBM / Kaggle Telco Customer Churn benchmark standard:
 
 | Feature Category | Features Included | Type & Encoding |
 | :--- | :--- | :--- |
@@ -73,7 +73,7 @@ The system processes [`customer_data.csv`](file:///c:/Users/yashn/CustomerChurnA
 
 ## ⚙️ Technical Approach & ML Architecture
 
-The automated machine learning pipeline [`churn_analysis.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/churn_analysis.py) executes the following end-to-end workflow:
+The automated machine learning pipeline [`src/churn_analysis.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/src/churn_analysis.py) executes the following end-to-end workflow:
 
 1. **Preprocessing & Cleaning**: Numerical missing value median imputation, categorical mode imputation, and 1.5× IQR outlier capping.
 2. **Feature & Ordinal Engineering**: Explicit ordinal mappings for `Contract`, `InternetService`, and `PaymentMethod`; binned `tenure_group`; ratio feature `avg_monthly_charge`.
@@ -98,11 +98,11 @@ The automated machine learning pipeline [`churn_analysis.py`](file:///c:/Users/y
 
 The project includes an automated unit test suite executed via `pytest` and integrated into GitHub Actions CI:
 
-* **Unit Test File**: [`tests/test_preprocessing.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/tests/test_preprocessing.py) (tests median imputation, ordinal mappings, 1.5× IQR capping, and `SelectKBest` feature output count).
+* **Unit Test Files**: [`tests/test_preprocessing.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/tests/test_preprocessing.py) and [`tests/test_api.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/tests/test_api.py).
 * **Pytest Config**: [`pytest.ini`](file:///c:/Users/yashn/CustomerChurnAnalysis/pytest.ini)
 * **Run Tests Locally**:
   ```bash
-  pytest
+  make test   # Or: pytest tests/
   ```
 
 ---
@@ -112,21 +112,31 @@ The project includes an automated unit test suite executed via `pytest` and inte
 ```text
 CustomerChurnAnalysis/
 ├── .github/workflows/ci.yml        # GitHub Actions CI workflow (pytest + pipeline checks)
-├── tests/
-│   └── test_preprocessing.py       # Pytest unit tests for preprocessing & feature selection
-├── .dockerignore                   # Docker build ignore rules
+├── app/
+│   └── app.py                      # Streamlit Web Application (5 interactive view modes)
+├── src/
+│   ├── churn_analysis.py           # Main Python ML pipeline (cleaning, SMOTE, tuning, SHAP, evaluation)
+│   ├── run_churn_pipeline.py       # Command-line production pipeline runner script
+│   ├── api.py                      # FastAPI prediction REST backend (/health & /predict)
+│   ├── json_logger.py              # Structured JSON step logging module
+│   ├── ab_test_cohort.py           # A/B Retention Trial Cohort Generator script
+│   ├── generate_tableau_workbook.py# Script that programmatically generates Tableau XML
+│   └── launch_all.py               # Master 1-click execution & verification launcher
+├── data/
+│   ├── customer_data.csv           # Raw Telco subscriber dataset (1,000 rows, 21 columns)
+│   └── processed/                  # Generated prediction and cohort CSV files
+├── models/                         # Serialized model pickles (model.pkl, scaler.pkl, selector.pkl)
+├── dashboard/
+│   └── Customer_Churn_Dashboard.twb# Programmatically created Tableau Packaged Workbook
+├── tests/                          # Automated Pytest unit test suite
+├── frontend/                       # Modern Next.js web application
 ├── Dockerfile                      # Production Docker container image definition
-├── pytest.ini                      # Pytest test runner configuration
-├── customer_data.csv               # Raw Telco subscriber dataset (1,000 rows, 21 columns)
-├── churn_analysis.py               # Main Python ML pipeline (cleaning, SMOTE, tuning, SHAP, evaluation)
-├── run_churn_pipeline.py           # Command-line production pipeline runner script
-├── app.py                          # Streamlit Web Application (4 interactive view modes)
-├── ab_test_cohort.py               # A/B Retention Trial Cohort Generator script
-├── churn_predictions.csv           # Model export containing features & predicted churn probabilities
-├── churn_predictions_v2.csv        # Version 2 predictions export file
-├── generate_tableau_workbook.py    # Script that programmatically generates Tableau XML
-├── Customer_Churn_Dashboard.twb    # Programmatically created Tableau Packaged Workbook
+├── docker-compose.yml              # Multi-container stack compose orchestration
+├── .pre-commit-config.yaml         # Code quality pre-commit hooks config
+├── Makefile                        # Developer shortcut commands
 ├── requirements.txt                # Exact Python package dependencies
+├── CONTRIBUTING.md                 # Contribution guidelines
+├── LICENSE                         # MIT License
 └── README.md                       # Project documentation
 ```
 
@@ -138,10 +148,10 @@ Developers can use `make` shortcuts instead of typing full commands:
 
 * **Install dependencies**: `make install` (replaces `pip install -r requirements.txt`)
 * **Run unit tests**: `make test` (replaces `pytest tests/`)
-* **Run ML pipeline**: `make pipeline` (replaces `python churn_analysis.py`)
-* **Launch FastAPI REST server**: `make api` (replaces `uvicorn api:app --reload --port 8000`)
+* **Run ML pipeline**: `make pipeline` (replaces `python src/churn_analysis.py`)
+* **Launch FastAPI REST server**: `make api` (replaces `uvicorn src.api:app --reload --port 8000`)
 * **Launch Next.js frontend**: `make frontend` (replaces `cd frontend && npm run dev`)
-* **Launch Streamlit dashboard**: `make run` (replaces `streamlit run app.py`)
+* **Launch Streamlit dashboard**: `make run` (replaces `streamlit run app/app.py`)
 * **Full pipeline setup**: `make all` (installs dependencies, runs unit tests, and launches the app)
 
 ---
@@ -231,10 +241,10 @@ pre-commit run --all-files
 * Features 4 view modes: Executive KPI summary, real-time subscriber risk calculator, Top 20 target list, and A/B retention trial cohort viewer.
 
 ### 🎨 Programmatic Tableau Dashboard
-* Open [`Customer_Churn_Dashboard.twb`](file:///c:/Users/yashn/CustomerChurnAnalysis/Customer_Churn_Dashboard.twb) in Tableau Desktop / Tableau Public.
+* Open [`dashboard/Customer_Churn_Dashboard.twb`](file:///c:/Users/yashn/CustomerChurnAnalysis/dashboard/Customer_Churn_Dashboard.twb) in Tableau Desktop / Tableau Public.
 * Regenerate workbook programmatically:
   ```bash
-  python generate_tableau_workbook.py
+  python src/generate_tableau_workbook.py
   ```
 
 ---
