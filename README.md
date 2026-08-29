@@ -119,8 +119,32 @@ Developers can use `make` shortcuts instead of typing full commands:
 * **Install dependencies**: `make install` (replaces `pip install -r requirements.txt`)
 * **Run unit tests**: `make test` (replaces `pytest tests/`)
 * **Run ML pipeline**: `make pipeline` (replaces `python churn_analysis.py`)
+* **Launch FastAPI REST server**: `make api` (replaces `uvicorn api:app --reload --port 8000`)
+* **Launch Next.js frontend**: `make frontend` (replaces `cd frontend && npm run dev`)
 * **Launch Streamlit dashboard**: `make run` (replaces `streamlit run app.py`)
 * **Full pipeline setup**: `make all` (installs dependencies, runs unit tests, and launches the app)
+
+---
+
+## 🖥️ Running Next.js Frontend alongside FastAPI Server
+
+The repository includes a modern Next.js frontend in [`frontend/`](file:///c:/Users/yashn/CustomerChurnAnalysis/frontend) that interacts directly with the FastAPI prediction backend.
+
+### Step 1: Start FastAPI Backend Server
+```bash
+make api
+# Or manually: uvicorn api:app --reload --port 8000
+```
+*(Confirms model artifacts are loaded at `http://localhost:8000/health`)*
+
+### Step 2: Start Next.js Frontend Application
+In a separate terminal window:
+```bash
+make frontend
+# Or manually: cd frontend && npm run dev
+```
+
+Open **`http://localhost:3000`** in your browser to view the interactive Next.js risk predictor dashboard.
 
 ---
 

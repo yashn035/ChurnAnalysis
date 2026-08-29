@@ -24,4 +24,7 @@ pipeline:
 api:
 	uvicorn api:app --reload --port 8000
 
+frontend:
+	cd frontend && npm run dev
+
 all: install test run
