@@ -5,13 +5,19 @@ pointing directly to churn_predictions.csv in the current working directory.
 """
 
 import os
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
 
-def generate_tableau_twb(csv_filename='data/processed/churn_predictions_v2.csv', output_twb='dashboard/Customer_Churn_Dashboard.twb'):
+
+def generate_tableau_twb(
+    csv_filename="data/processed/churn_predictions_v2.csv",
+    output_twb="dashboard/Customer_Churn_Dashboard.twb",
+):
     if not os.path.exists(csv_filename):
-        csv_filename = 'data/processed/churn_predictions.csv' if os.path.exists('data/processed/churn_predictions.csv') else 'churn_predictions.csv'
-        
+        csv_filename = (
+            "data/processed/churn_predictions.csv"
+            if os.path.exists("data/processed/churn_predictions.csv")
+            else "churn_predictions.csv"
+        )
+
     os.makedirs(os.path.dirname(output_twb), exist_ok=True)
     abs_csv_path = os.path.abspath(csv_filename)
     csv_dir = os.path.dirname(abs_csv_path)
@@ -263,11 +269,12 @@ def generate_tableau_twb(csv_filename='data/processed/churn_predictions_v2.csv',
 </workbook>
 """
 
-    with open(output_twb, 'w', encoding='utf-8') as f:
+    with open(output_twb, "w", encoding="utf-8") as f:
         f.write(xml_content)
-        
+
     print(f"[SUCCESS] Programmatic Tableau Workbook generated: '{output_twb}'")
     return output_twb
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     generate_tableau_twb()

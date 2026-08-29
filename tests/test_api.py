@@ -2,7 +2,7 @@
 Unit tests for api.py FastAPI endpoints (/health and /predict).
 """
 
-from api import health_check, predict_churn, ChurnPredictionInput
+from api import ChurnPredictionInput, health_check, predict_churn
 
 
 def test_health_check_endpoint():
@@ -21,7 +21,7 @@ def test_predict_churn_high_risk():
         InternetService="Fiber optic",
         PaymentMethod="Electronic check",
         TechSupport="No",
-        OnlineSecurity="No"
+        OnlineSecurity="No",
     )
     result = predict_churn(payload)
     assert "churn_probability" in result
@@ -40,7 +40,7 @@ def test_predict_churn_low_risk():
         InternetService="DSL",
         PaymentMethod="Bank transfer (automatic)",
         TechSupport="Yes",
-        OnlineSecurity="Yes"
+        OnlineSecurity="Yes",
     )
     result = predict_churn(payload)
     assert result["risk_level"] == "Low"

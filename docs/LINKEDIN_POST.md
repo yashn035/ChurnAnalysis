@@ -6,7 +6,7 @@
 
 🚨 **Predicting Customer Churn & Saving $1.2M+ ARR with Machine Learning & Tableau** 🚨
 
-In the subscription telecom industry, acquiring a new customer costs 5x to 7x more than retaining an existing one. 
+In the subscription telecom industry, acquiring a new customer costs 5x to 7x more than retaining an existing one.
 
 I recently built and deployed an end-to-end **Customer Churn Risk & Retention Modeling System** designed to shift Customer Success from reactive support to automated, predictive revenue protection.
 

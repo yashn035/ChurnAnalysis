@@ -1,8 +1,8 @@
 # EXECUTIVE ONE-PAGER: Customer Churn Retention System
 
-**To**: Executive Leadership & Customer Success Directorate  
-**Focus**: Revenue Protection & Customer Churn Mitigation  
-**Target Impact**: **16.5% Net Churn Reduction** | **$1.2M+ Annual Recurring Revenue (ARR) Protected**  
+**To**: Executive Leadership & Customer Success Directorate
+**Focus**: Revenue Protection & Customer Churn Mitigation
+**Target Impact**: **16.5% Net Churn Reduction** | **$1.2M+ Annual Recurring Revenue (ARR) Protected**
 
 ---
 
@@ -20,7 +20,7 @@ We have built an **AI-Driven Customer Churn & Retention System** that continuous
 ```
 
 - **Accuracy**: Our model achieves an **AUC-ROC score of 0.8931**, capturing **76.5% of at-risk subscribers** before cancellation.
-- **Top Defection Drivers**: 
+- **Top Defection Drivers**:
   1. Month-to-Month Contracts (4× higher churn risk than annual plans).
   2. Lack of Tech Support & Online Security add-on services.
   3. High monthly bill shock on unbundled Fiber Optic accounts.

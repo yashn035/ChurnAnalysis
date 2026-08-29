@@ -1,7 +1,7 @@
 # Production Deployment & Operations Guide 🛠️
 
-**Project**: Customer Churn Analysis & Retention System  
-**Pipeline Entry Point**: [`run_churn_pipeline.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/run_churn_pipeline.py)  
+**Project**: Customer Churn Analysis & Retention System
+**Pipeline Entry Point**: [`run_churn_pipeline.py`](file:///c:/Users/yashn/CustomerChurnAnalysis/run_churn_pipeline.py)
 **Predictions Output**: [`predictions_output.csv`](file:///c:/Users/yashn/CustomerChurnAnalysis/predictions_output.csv)
 
 ---
@@ -64,9 +64,9 @@ DB_URI = "postgresql://user:password@localhost:5432/telecom_db"
 
 def extract_weekly_data(output_csv='live_customer_data.csv'):
     engine = create_engine(DB_URI)
-    
+
     query = """
-    SELECT 
+    SELECT
         customer_id AS customerID,
         gender,
         senior_citizen AS SeniorCitizen,
@@ -90,7 +90,7 @@ def extract_weekly_data(output_csv='live_customer_data.csv'):
         churn_status AS Churn
     FROM active_subscribers_view;
     """
-    
+
     df = pd.read_sql(query, engine)
     df.to_csv(output_csv, index=False)
     print(f"[SUCCESS] Extracted {len(df)} records to '{output_csv}'")
@@ -135,7 +135,7 @@ SF_TOKEN = 'YourSecurityToken'
 def sync_predictions_to_salesforce(predictions_csv='predictions_output.csv'):
     sf = Salesforce(username=SF_USERNAME, password=SF_PASSWORD, security_token=SF_TOKEN)
     df = pd.read_csv(predictions_csv)
-    
+
     records_to_update = []
     for idx, row in df.iterrows():
         records_to_update.append({
@@ -143,7 +143,7 @@ def sync_predictions_to_salesforce(predictions_csv='predictions_output.csv'):
             'Churn_Probability__c': float(row['churn_probability']),
             'Churn_Risk_Flag__c': bool(row['predicted_churn'])
         })
-        
+
     # Bulk Upsert matching on Customer_ID__c
     results = sf.bulk.Account.upsert(records_to_update, 'Customer_ID__c')
     print(f"[SUCCESS] Synchronized {len(results)} prediction records to Salesforce CRM.")
@@ -179,17 +179,17 @@ def evaluate_model_drift(predictions_csv='predictions_output.csv'):
     if not os.path.exists(predictions_csv):
         logger.error(f"File '{predictions_csv}' not found.")
         return
-        
+
     df = pd.read_csv(predictions_csv)
-    
+
     if 'actual_churn' not in df.columns or 'churn_probability' not in df.columns:
         logger.error("Required columns missing for drift evaluation.")
         return
-        
+
     # Compute current AUC-ROC on ground truth labels
     current_auc = roc_auc_score(df['actual_churn'], df['churn_probability'])
     logger.info(f"Current Model Test Set AUC-ROC: {current_auc:.4f}")
-    
+
     if current_auc < AUC_THRESHOLD:
         logger.warning(f"🚨 MODEL DRIFT DETECTED: AUC ({current_auc:.4f}) dropped below threshold ({AUC_THRESHOLD})!")
         trigger_retraining_alert(current_auc)

@@ -1,8 +1,8 @@
 # 🎙️ 2-Minute Video Demo Script: Customer Churn Retention System
 
-**Target Duration**: 120 Seconds (2 Minutes)  
-**Tone**: Professional, Authoritative, Energetic  
-**Visual Focus**: Screen recording showing Python terminal, Tableau Dashboard, and A/B Test outputs  
+**Target Duration**: 120 Seconds (2 Minutes)
+**Tone**: Professional, Authoritative, Energetic
+**Visual Focus**: Screen recording showing Python terminal, Tableau Dashboard, and A/B Test outputs
 
 ---
 
