@@ -81,21 +81,21 @@ app_mode = st.sidebar.radio(
 # 4. Data Loader
 @st.cache_data
 def load_data():
-    if os.path.exists("data/processed/churn_predictions_v2.csv"):
-        df = pd.read_csv("data/processed/churn_predictions_v2.csv")
-    elif os.path.exists("churn_predictions_v2.csv"):
-        df = pd.read_csv("churn_predictions_v2.csv")
-    elif os.path.exists("data/processed/churn_predictions.csv"):
-        df = pd.read_csv("data/processed/churn_predictions.csv")
-    elif os.path.exists("churn_predictions.csv"):
-        df = pd.read_csv("churn_predictions.csv")
-    else:
-        st.error(
-            "Prediction data file not found. Please run 'python src/churn_analysis.py' first."
-        )
-        st.stop()
+    try:
+        if os.path.exists("data/processed/churn_predictions_v2.csv"):
+            df = pd.read_csv("data/processed/churn_predictions_v2.csv")
+        elif os.path.exists("churn_predictions_v2.csv"):
+            df = pd.read_csv("churn_predictions_v2.csv")
+        elif os.path.exists("data/processed/churn_predictions.csv"):
+            df = pd.read_csv("data/processed/churn_predictions.csv")
+        elif os.path.exists("churn_predictions.csv"):
+            df = pd.read_csv("churn_predictions.csv")
+        else:
+            return None
+    except Exception:
+        return None
 
-    if "tenure_group" not in df.columns and "tenure" in df.columns:
+    if df is not None and "tenure_group" not in df.columns and "tenure" in df.columns:
         df["tenure_group"] = pd.cut(
             df["tenure"],
             bins=[-1, 12, 24, 48, 72, 100],
@@ -112,38 +112,41 @@ df = load_data()
 if app_mode == "Executive Summary KPIs":
     st.subheader("📌 Executive Key Performance Indicators")
 
-    col1, col2, col3, col4 = st.columns(4)
+    if df is not None and not df.empty:
+        col1, col2, col3, col4 = st.columns(4)
 
-    overall_churn = df["actual_churn"].mean()
-    high_risk_count = (df["churn_probability"] > 0.50).sum()
-    avg_monthly = df[df["churn_probability"] > 0.50]["MonthlyCharges"].mean()
-    arr_protected = "$1.2M+"
+        overall_churn = df["actual_churn"].mean()
+        high_risk_count = (df["churn_probability"] > 0.50).sum()
+        avg_monthly = df[df["churn_probability"] > 0.50]["MonthlyCharges"].mean()
+        arr_protected = "$1.2M+"
 
-    col1.metric("Overall Churn Rate", f"{overall_churn:.1%}")
-    col2.metric("High-Risk Accounts (P > 0.50)", f"{high_risk_count} Accounts")
-    col3.metric("At-Risk Avg Monthly Charge", f"${avg_monthly:.2f}")
-    col4.metric("Protected Revenue Goal", arr_protected)
+        col1.metric("Overall Churn Rate", f"{overall_churn:.1%}")
+        col2.metric("High-Risk Accounts (P > 0.50)", f"{high_risk_count} Accounts")
+        col3.metric("At-Risk Avg Monthly Charge", "$%.2f" % avg_monthly)
+        col4.metric("Protected Revenue Goal", arr_protected)
 
-    st.markdown("---")
+        st.markdown("---")
 
-    st.subheader("📈 Churn Risk Analytics")
-    col_left, col_right = st.columns(2)
+        st.subheader("📈 Churn Risk Analytics")
+        col_left, col_right = st.columns(2)
 
-    with col_left:
-        st.markdown("**Avg Churn Probability by Contract Type & Tenure Group**")
-        bar_data = (
-            df.groupby(["Contract", "tenure_group"])["churn_probability"]
-            .mean()
-            .unstack()
-        )
-        st.bar_chart(bar_data)
+        with col_left:
+            st.markdown("**Avg Churn Probability by Contract Type & Tenure Group**")
+            bar_data = (
+                df.groupby(["Contract", "tenure_group"])["churn_probability"]
+                .mean()
+                .unstack()
+            )
+            st.bar_chart(bar_data)
 
-    with col_right:
-        st.markdown("**Monthly Charges vs Tenure (Colored by Risk)**")
-        scatter_df = df[["tenure", "MonthlyCharges", "churn_probability"]].copy()
-        st.scatter_chart(
-            scatter_df, x="tenure", y="MonthlyCharges", color="churn_probability"
-        )
+        with col_right:
+            st.markdown("**Monthly Charges vs Tenure (Colored by Risk)**")
+            scatter_df = df[["tenure", "MonthlyCharges", "churn_probability"]].copy()
+            st.scatter_chart(
+                scatter_df, x="tenure", y="MonthlyCharges", color="churn_probability"
+            )
+    else:
+        st.warning("⚠️ Predictions file not found. Please run the pipeline first.")
 
 # -----------------------------------------------------------------------------
 # MODE 2: INTERACTIVE INDIVIDUAL RISK CALCULATOR
@@ -234,30 +237,51 @@ elif app_mode == "Top 20 High-Risk Target List":
         "Filtered customer roster with churn probability $P > 0.50$ sorted by highest risk."
     )
 
-    high_risk_df = df[df["churn_probability"] > 0.50].sort_values(
-        by="churn_probability", ascending=False
-    )
-    st.dataframe(
-        high_risk_df[
-            [
-                "customerID",
-                "Contract",
-                "tenure",
-                "MonthlyCharges",
-                "PaymentMethod",
-                "churn_probability",
-                "predicted_churn",
-            ]
-        ].head(20),
-        use_container_width=True,
-    )
+    try:
+        if df is None or df.empty or "churn_probability" not in df.columns:
+            raise FileNotFoundError("Predictions data unavailable.")
 
-    st.download_button(
-        label="📥 Download High-Risk Target List CSV",
-        data=high_risk_df.to_csv(index=False),
-        file_name="high_risk_customer_target_list.csv",
-        mime="text/csv",
-    )
+        high_risk_df = df[df["churn_probability"] > 0.50].sort_values(
+            by="churn_probability", ascending=False
+        )
+
+        display_df = (
+            high_risk_df[
+                [
+                    "customerID",
+                    "Contract",
+                    "tenure",
+                    "MonthlyCharges",
+                    "PaymentMethod",
+                    "churn_probability",
+                    "predicted_churn",
+                ]
+            ]
+            .head(20)
+            .copy()
+        )
+
+        # Format monetary column and churn probability percentage
+        display_df["MonthlyCharges"] = display_df["MonthlyCharges"].apply(
+            lambda x: "$%.2f" % x if isinstance(x, (int, float)) else str(x)
+        )
+        display_df["churn_probability"] = display_df["churn_probability"].apply(
+            lambda x: f"{x:.1%}" if isinstance(x, (int, float)) else str(x)
+        )
+
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+        )
+
+        st.download_button(
+            label="📥 Download High-Risk Target List CSV",
+            data=high_risk_df.to_csv(index=False),
+            file_name="high_risk_customer_target_list.csv",
+            mime="text/csv",
+        )
+    except Exception:
+        st.warning("⚠️ Predictions file not found. Please run the pipeline first.")
 
 # -----------------------------------------------------------------------------
 # MODE 4: A/B RETENTION TRIAL COHORTS
@@ -284,6 +308,17 @@ elif app_mode == "A/B Retention Trial Cohorts":
     if os.path.exists(ctrl_path) and os.path.exists(var_path):
         ctrl_df = pd.read_csv(ctrl_path)
         var_df = pd.read_csv(var_path)
+
+        # Format display tables
+        for sub_df in [ctrl_df, var_df]:
+            if "MonthlyCharges" in sub_df.columns:
+                sub_df["MonthlyCharges"] = sub_df["MonthlyCharges"].apply(
+                    lambda x: "$%.2f" % x if isinstance(x, (int, float)) else str(x)
+                )
+            if "churn_probability" in sub_df.columns:
+                sub_df["churn_probability"] = sub_df["churn_probability"].apply(
+                    lambda x: f"{x:.1%}" if isinstance(x, (int, float)) else str(x)
+                )
 
         with col_c:
             st.markdown(f"### Control Group ({len(ctrl_df)} Accounts)")
