@@ -1,0 +1,27 @@
+[
+  {
+    "function": "load_data",
+    "execution_time_seconds": 0.0255,
+    "peak_memory_mb": 0.7253
+  },
+  {
+    "function": "preprocess_data",
+    "execution_time_seconds": 0.1156,
+    "peak_memory_mb": 1.0689
+  },
+  {
+    "function": "prepare_features_and_split",
+    "execution_time_seconds": 0.1507,
+    "peak_memory_mb": 1.1327
+  },
+  {
+    "function": "train_model",
+    "execution_time_seconds": 7.7243,
+    "peak_memory_mb": 1.0242
+  },
+  {
+    "function": "evaluate_and_export",
+    "execution_time_seconds": 0.2011,
+    "peak_memory_mb": 0.4723
+  }
+]
