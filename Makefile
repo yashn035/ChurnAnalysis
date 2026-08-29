@@ -21,4 +21,7 @@ test:
 pipeline:
 	python churn_analysis.py
 
+api:
+	uvicorn api:app --reload --port 8000
+
 all: install test run

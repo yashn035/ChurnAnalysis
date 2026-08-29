@@ -23,6 +23,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from imblearn.over_sampling import SMOTE
+import joblib
 from datetime import datetime
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, precision_score, recall_score, accuracy_score
 import shap
@@ -443,6 +444,12 @@ def main():
     else:
         metrics_df.to_csv(metrics_file, mode='a', header=False, index=False)
     print(f"Appended current model metrics to '{metrics_file}'.")
+
+    # Save model, scaler, and selector pickle artifacts
+    joblib.dump(best_model, 'model.pkl')
+    joblib.dump(scaler, 'scaler.pkl')
+    joblib.dump(selector, 'selector.pkl')
+    print("Successfully saved 'model.pkl', 'scaler.pkl', and 'selector.pkl'.")
 
     # -------------------------------------------------------------------------
     # STEP 11: Business Interpretation & Actionable Retention Strategies
