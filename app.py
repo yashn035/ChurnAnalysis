@@ -24,12 +24,20 @@ st.markdown("---")
 @st.cache_data
 def load_data():
     if os.path.exists('churn_predictions_v2.csv'):
-        return pd.read_csv('churn_predictions_v2.csv')
+        df = pd.read_csv('churn_predictions_v2.csv')
     elif os.path.exists('churn_predictions.csv'):
-        return pd.read_csv('churn_predictions.csv')
+        df = pd.read_csv('churn_predictions.csv')
     else:
         st.error("Prediction data file not found. Please run 'python churn_analysis.py' first.")
         st.stop()
+
+    if 'tenure_group' not in df.columns and 'tenure' in df.columns:
+        df['tenure_group'] = pd.cut(
+            df['tenure'],
+            bins=[-1, 12, 24, 48, 72, 100],
+            labels=['0-12 Mo', '12-24 Mo', '24-48 Mo', '48-72 Mo', '72+ Mo']
+        )
+    return df
 
 df = load_data()
 

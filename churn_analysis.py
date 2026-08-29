@@ -171,6 +171,11 @@ def main():
     # Save a clean readable copy of features for final export to Tableau before encoding
     readable_df = df.copy()
     readable_df['customerID'] = customer_ids
+    readable_df['tenure_group'] = pd.cut(
+        readable_df['tenure'],
+        bins=[-1, 12, 24, 48, 72, 100],
+        labels=['0-12 Mo', '12-24 Mo', '24-48 Mo', '48-72 Mo', '72+ Mo']
+    )
 
     # -------------------------------------------------------------------------
     # STEP 3: Feature Engineering & Ordinal Encodings
