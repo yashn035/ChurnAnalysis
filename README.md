@@ -112,9 +112,29 @@ CustomerChurnAnalysis/
 
 ---
 
+## 🛠️ Developer Shortcuts (Makefile)
+
+Developers can use `make` shortcuts instead of typing full commands:
+
+* **Install dependencies**: `make install` (replaces `pip install -r requirements.txt`)
+* **Run unit tests**: `make test` (replaces `pytest tests/`)
+* **Run ML pipeline**: `make pipeline` (replaces `python churn_analysis.py`)
+* **Launch Streamlit dashboard**: `make run` (replaces `streamlit run app.py`)
+* **Full pipeline setup**: `make all` (installs dependencies, runs unit tests, and launches the app)
+
+---
+
 ## 💻 Setup & Local Installation
 
-### Local Setup (Python Environment)
+### Quick Setup using Makefile
+
+```bash
+make install    # Install dependencies from requirements.txt
+make test       # Run pytest unit test suite
+make run        # Launch Streamlit app
+```
+
+### Manual Setup (Python Environment)
 
 1. Navigate to the project directory:
    ```bash
