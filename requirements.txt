@@ -7,3 +7,5 @@ matplotlib==3.10.8
 seaborn==0.13.2
 numpy==2.5.1
 scipy==1.18.0
+streamlit>=1.54.0
+
