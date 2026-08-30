@@ -13,13 +13,20 @@ import warnings
 import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from xgboost import XGBClassifier
+
+HAS_XGBOOST = False
+try:
+    from xgboost import XGBClassifier
+    _dummy = XGBClassifier()
+    HAS_XGBOOST = True
+except Exception:
+    HAS_XGBOOST = False
 
 from json_logger import get_json_logger, log_pipeline_step
 
@@ -125,7 +132,7 @@ def run_pipeline(data_path, output_path="data/processed/predictions_output.csv")
             df_model["tenure_group"] = (
                 pd.cut(
                     df_model["tenure"],
-                    bins=[0, 12, 24, 48, 72],
+                    bins=[-1, 12, 24, 48, 100],
                     labels=[0, 1, 2, 3],
                     include_lowest=True,
                 )
@@ -220,19 +227,36 @@ def run_pipeline(data_path, output_path="data/processed/predictions_output.csv")
         )
         grid_rf.fit(X_train_res, y_train_res)
 
-        param_grid_xgb = {
-            "n_estimators": [50, 100],
-            "max_depth": [3, 5],
-            "learning_rate": [0.01, 0.05, 0.1],
-        }
-        grid_xgb = GridSearchCV(
-            XGBClassifier(random_state=RANDOM_STATE, eval_metric="logloss"),
-            param_grid_xgb,
-            cv=5,
-            scoring="roc_auc",
-            n_jobs=-1,
-        )
-        grid_xgb.fit(X_train_res, y_train_res)
+        if HAS_XGBOOST:
+            param_grid_xgb = {
+                "n_estimators": [50, 100],
+                "max_depth": [3, 5],
+                "learning_rate": [0.01, 0.05, 0.1],
+            }
+            grid_third = GridSearchCV(
+                XGBClassifier(random_state=RANDOM_STATE, eval_metric="logloss"),
+                param_grid_xgb,
+                cv=5,
+                scoring="roc_auc",
+                n_jobs=-1,
+            )
+            third_name = "XGBoost"
+        else:
+            param_grid_gb = {
+                "n_estimators": [50, 100],
+                "max_depth": [3, 5],
+                "learning_rate": [0.01, 0.05, 0.1],
+            }
+            grid_third = GridSearchCV(
+                GradientBoostingClassifier(random_state=RANDOM_STATE),
+                param_grid_gb,
+                cv=5,
+                scoring="roc_auc",
+                n_jobs=-1,
+            )
+            third_name = "Gradient Boosting"
+
+        grid_third.fit(X_train_res, y_train_res)
         log_pipeline_step(
             logger, "model_training", time.time() - t_train, n_samples=len(X_train_res)
         )
@@ -240,7 +264,7 @@ def run_pipeline(data_path, output_path="data/processed/predictions_output.csv")
         models = {
             "Logistic Regression": grid_lr.best_estimator_,
             "Random Forest": grid_rf.best_estimator_,
-            "XGBoost": grid_xgb.best_estimator_,
+            third_name: grid_third.best_estimator_,
         }
 
         best_auc = -1.0

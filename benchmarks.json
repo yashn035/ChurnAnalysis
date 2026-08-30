@@ -1,27 +1,27 @@
 [
   {
     "function": "load_data",
-    "execution_time_seconds": 0.0257,
-    "peak_memory_mb": 0.7259
+    "execution_time_seconds": 0.0196,
+    "peak_memory_mb": 0.7296
   },
   {
     "function": "preprocess_data",
-    "execution_time_seconds": 0.0854,
-    "peak_memory_mb": 1.0813
+    "execution_time_seconds": 0.0695,
+    "peak_memory_mb": 1.0052
   },
   {
     "function": "prepare_features_and_split",
-    "execution_time_seconds": 0.0668,
-    "peak_memory_mb": 1.133
+    "execution_time_seconds": 0.0376,
+    "peak_memory_mb": 1.0205
   },
   {
     "function": "train_model",
-    "execution_time_seconds": 9.5995,
-    "peak_memory_mb": 1.0177
+    "execution_time_seconds": 11.2983,
+    "peak_memory_mb": 0.8995
   },
   {
     "function": "evaluate_and_export",
-    "execution_time_seconds": 0.2428,
-    "peak_memory_mb": 0.472
+    "execution_time_seconds": 0.1635,
+    "peak_memory_mb": 0.4632
   }
 ]

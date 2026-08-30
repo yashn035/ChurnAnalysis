@@ -37,6 +37,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Ensure required directories exist
+for d in ["data/processed", "models", "logs", "dashboard"]:
+    os.makedirs(d, exist_ok=True)
+
 # Global variables for loaded ML artifacts
 MODEL_PATH = "models/model.pkl" if os.path.exists("models/model.pkl") else "model.pkl"
 SCALER_PATH = (
@@ -143,7 +147,7 @@ def preprocess_input(input_data: ChurnPredictionInput) -> pd.DataFrame:
 
     try:
         for field_name, value, mapping in validations:
-            if value not in mapping:
+            if not isinstance(value, str) or value not in mapping:
                 allowed_vals = ", ".join(f"'{k}'" for k in mapping.keys())
                 raise ValueError(
                     f"Invalid value '{value}' for field '{field_name}'. Allowed values: {allowed_vals}"

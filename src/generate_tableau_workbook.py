@@ -265,7 +265,7 @@ def generate_tableau_twb(
         </zone>
       </zones>
     </dashboard>
-  </dashboardsContainer>
+  </dashboards>
 </workbook>
 """
 

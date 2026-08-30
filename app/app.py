@@ -88,15 +88,15 @@ st.markdown(
 )
 
 # -----------------------------------------------------------------------------
-# 2. CACHED DATA & MODEL LOADERS
+# 2. CACHED DATA & MODEL LOADERS & DIRECTORIES
 # -----------------------------------------------------------------------------
-MODEL_PATH = "models/model.pkl" if os.path.exists("models/model.pkl") else "model.pkl"
-SCALER_PATH = (
-    "models/scaler.pkl" if os.path.exists("models/scaler.pkl") else "scaler.pkl"
-)
-SELECTOR_PATH = (
-    "models/selector.pkl" if os.path.exists("models/selector.pkl") else "selector.pkl"
-)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for d in ["data/processed", "models", "logs", "dashboard"]:
+    os.makedirs(os.path.join(BASE_DIR, d), exist_ok=True)
+
+MODEL_PATH = os.path.join(BASE_DIR, "models", "model.pkl") if os.path.exists(os.path.join(BASE_DIR, "models", "model.pkl")) else "models/model.pkl"
+SCALER_PATH = os.path.join(BASE_DIR, "models", "scaler.pkl") if os.path.exists(os.path.join(BASE_DIR, "models", "scaler.pkl")) else "models/scaler.pkl"
+SELECTOR_PATH = os.path.join(BASE_DIR, "models", "selector.pkl") if os.path.exists(os.path.join(BASE_DIR, "models", "selector.pkl")) else "models/selector.pkl"
 
 
 @st.cache_resource
@@ -121,10 +121,10 @@ def load_model_artifacts() -> Tuple[Optional[Any], Optional[Any], Optional[Any]]
 def load_predictions_data() -> Optional[pd.DataFrame]:
     """Load model prediction outputs CSV."""
     paths = [
+        os.path.join(BASE_DIR, "data", "processed", "churn_predictions_v2.csv"),
         "data/processed/churn_predictions_v2.csv",
-        "churn_predictions_v2.csv",
+        os.path.join(BASE_DIR, "data", "processed", "churn_predictions.csv"),
         "data/processed/churn_predictions.csv",
-        "churn_predictions.csv",
     ]
     for p in paths:
         if os.path.exists(p):
@@ -180,17 +180,29 @@ def load_ab_cohort_data() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame
 
 @st.cache_data
 def load_metrics_history() -> Optional[pd.DataFrame]:
-    """Load historical model performance execution logs."""
-    m_path = (
-        "data/processed/metrics_history.csv"
-        if os.path.exists("data/processed/metrics_history.csv")
-        else "metrics_history.csv"
-    )
-    if os.path.exists(m_path):
-        try:
-            return pd.read_csv(m_path)
-        except Exception:
-            return None
+    """Load historical model performance execution logs from logs/metrics_history.csv."""
+    paths = [
+        os.path.join(BASE_DIR, "logs", "metrics_history.csv"),
+        "logs/metrics_history.csv",
+        os.path.join(BASE_DIR, "data", "processed", "metrics_history.csv"),
+        "data/processed/metrics_history.csv",
+        "metrics_history.csv",
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            try:
+                df = pd.read_csv(p)
+                # Normalize column names if lower/upper case
+                col_map = {
+                    "auc": "AUC",
+                    "Precision": "precision",
+                    "Recall": "recall",
+                    "Accuracy": "accuracy",
+                }
+                df = df.rename(columns=col_map)
+                return df
+            except Exception:
+                continue
     return None
 
 

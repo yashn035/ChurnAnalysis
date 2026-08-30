@@ -3,6 +3,7 @@ Customer Churn Analysis and Retention Modeling Pipeline (v2 - High AUC)
 Senior Data Scientist Implementation with Benchmarking & Modular Pipeline.
 """
 
+import csv
 import functools
 import json
 import os
@@ -27,9 +28,18 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from xgboost import XGBClassifier
+
+HAS_XGBOOST = False
+try:
+    from xgboost import XGBClassifier
+    _dummy = XGBClassifier()
+    HAS_XGBOOST = True
+except Exception as _e:
+    HAS_XGBOOST = False
+    print(f"[INFO] XGBoost library not loadable ({_e}). Using GradientBoostingClassifier fallback.")
 
 from json_logger import get_json_logger, log_pipeline_step
 
@@ -50,6 +60,10 @@ SCALER_PATH: str = os.getenv("SCALER_PATH", "models/scaler.pkl")
 SELECTOR_PATH: str = os.getenv("SELECTOR_PATH", "models/selector.pkl")
 DATA_PATH: str = os.getenv("DATA_PATH", "data/customer_data.csv")
 LOG_PATH: str = os.getenv("LOG_PATH", "logs/pipeline.jsonl")
+
+# Ensure required directories exist
+for d in ["data/processed", "models", "logs", "dashboard"]:
+    os.makedirs(d, exist_ok=True)
 
 np.random.seed(RANDOM_STATE)
 
@@ -348,7 +362,7 @@ def preprocess_data(
     )
 
     df["tenure_group"] = pd.cut(
-        df["tenure"], bins=[0, 12, 24, 48, 72], labels=[0, 1, 2, 3], include_lowest=True
+        df["tenure"], bins=[-1, 12, 24, 48, 100], labels=[0, 1, 2, 3], include_lowest=True
     ).astype(int)
 
     df["avg_monthly_charge"] = np.where(
@@ -463,26 +477,45 @@ def train_model(X_train_res: np.ndarray, y_train_res: np.ndarray) -> Dict[str, A
     grid_rf.fit(X_train_res, y_train_res)
     best_rf = grid_rf.best_estimator_
 
-    print("Tuning XGBoost Classifier...")
-    param_grid_xgb = {
-        "n_estimators": [50, 100],
-        "max_depth": [3, 5],
-        "learning_rate": [0.01, 0.05, 0.1],
-    }
-    grid_xgb = GridSearchCV(
-        XGBClassifier(random_state=RANDOM_STATE, eval_metric="logloss"),
-        param_grid_xgb,
-        cv=CV_FOLDS,
-        scoring="roc_auc",
-        n_jobs=-1,
-    )
-    grid_xgb.fit(X_train_res, y_train_res)
-    best_xgb = grid_xgb.best_estimator_
+    if HAS_XGBOOST:
+        print("Tuning XGBoost Classifier...")
+        param_grid_xgb = {
+            "n_estimators": [50, 100],
+            "max_depth": [3, 5],
+            "learning_rate": [0.01, 0.05, 0.1],
+        }
+        grid_xgb = GridSearchCV(
+            XGBClassifier(random_state=RANDOM_STATE, eval_metric="logloss"),
+            param_grid_xgb,
+            cv=CV_FOLDS,
+            scoring="roc_auc",
+            n_jobs=-1,
+        )
+        grid_xgb.fit(X_train_res, y_train_res)
+        best_third = grid_xgb.best_estimator_
+        third_name = "XGBoost"
+    else:
+        print("Tuning Gradient Boosting Classifier...")
+        param_grid_gb = {
+            "n_estimators": [50, 100],
+            "max_depth": [3, 5],
+            "learning_rate": [0.01, 0.05, 0.1],
+        }
+        grid_gb = GridSearchCV(
+            GradientBoostingClassifier(random_state=RANDOM_STATE),
+            param_grid_gb,
+            cv=CV_FOLDS,
+            scoring="roc_auc",
+            n_jobs=-1,
+        )
+        grid_gb.fit(X_train_res, y_train_res)
+        best_third = grid_gb.best_estimator_
+        third_name = "Gradient Boosting"
 
     models = {
         "Logistic Regression": best_lr,
         "Random Forest": best_rf,
-        "XGBoost": best_xgb,
+        third_name: best_third,
     }
     return models
 
@@ -547,7 +580,7 @@ def evaluate_and_export(
 
     # SHAP calculation
     try:
-        if best_model_name in ["XGBoost", "Random Forest"]:
+        if best_model_name in ["XGBoost", "Random Forest", "Gradient Boosting"]:
             explainer = shap.TreeExplainer(best_model)
             shap_values = explainer.shap_values(X_test_sel)
             shap_vals = shap_values[1] if isinstance(shap_values, list) else shap_values
@@ -608,6 +641,23 @@ def evaluate_and_export(
     else:
         metrics_df.to_csv(metrics_file, mode="a", header=False, index=False)
     print(f"Appended current model metrics to '{metrics_file}'.")
+
+    # Append row to logs/metrics_history.csv using built-in csv module
+    logs_metrics_file = "logs/metrics_history.csv"
+    os.makedirs("logs", exist_ok=True)
+    logs_file_exists = os.path.exists(logs_metrics_file)
+    with open(logs_metrics_file, mode="a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not logs_file_exists:
+            writer.writerow(["timestamp", "auc", "precision", "recall", "accuracy"])
+        writer.writerow([
+            datetime.now().isoformat(),
+            round(float(best_auc), 4),
+            round(float(best_precision), 4),
+            round(float(best_recall), 4),
+            round(float(best_accuracy), 4),
+        ])
+    print(f"Appended current model metrics row to '{logs_metrics_file}'.")
 
     joblib.dump(best_model, MODEL_PATH)
     joblib.dump(scaler, SCALER_PATH)
